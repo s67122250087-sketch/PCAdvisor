@@ -11,11 +11,11 @@ npm install
 npm start
 ```
 
-Open `http://localhost:3000`. `npm start` builds the React app into `dist/` and starts the Express server. For frontend development with Vite, run `npm run dev`.
+Open `http://localhost:3000`. Installing dependencies builds the React app into `dist/`; `npm start` starts the Express server. For frontend development with Vite, run `npm run dev`.
 
 ## Deployment
 
-For Render, create a Web Service from the GitHub repository. Use `npm install` as the build command and `npm start` as the start command. The application builds its React frontend at startup, while Express serves the frontend and recommendation API together.
+For Render, create a Web Service from the GitHub repository. Use `npm install` as the build command and `node server.js` (or `npm start`) as the start command. The install step builds the React frontend so the existing Render start command also serves the new app.
 
 ## Firebase
 
