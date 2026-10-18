@@ -255,7 +255,7 @@
       "ram_type": "-",
       "power_consumption": "-",
       "description": "AMD CPU - Ryzen 7 3700X",
-      "image": "/image/CPU014.webp"
+      "image": "/image/cpu014.webp"
     },
     "CPU015": {
       "product_id": "CPU015",
@@ -283,7 +283,7 @@
       "ram_type": "-",
       "power_consumption": "-",
       "description": "AMD CPU - Ryzen 7 7700X",
-      "image": "/image/CPU016.webp"
+      "image": "/image/cpu016.webp"
     },
     "CPU017": {
       "product_id": "CPU017",
@@ -493,7 +493,7 @@
       "ram_type": "-",
       "power_consumption": "-",
       "description": "NVIDIA GPU - GeForce RTX 4070 Ti SUPER",
-      "image": "/image/GPU009.webp"
+      "image": "/image/gpu009.webp"
     },
     "GPU010": {
       "product_id": "GPU010",
@@ -507,7 +507,7 @@
       "ram_type": "-",
       "power_consumption": "-",
       "description": "NVIDIA GPU - GeForce RTX 5080",
-      "image": "/image/GPU010.webp"
+      "image": "/image/gpu010.webp"
     },
     "GPU011": {
       "product_id": "GPU011",
@@ -521,7 +521,7 @@
       "ram_type": "-",
       "power_consumption": "-",
       "description": "NVIDIA GPU - GeForce RTX 5090",
-      "image": "/image/GPU011.webp"
+      "image": "/image/gpu011.webp"
     },
     "GPU012": {
       "product_id": "GPU012",
@@ -535,7 +535,7 @@
       "ram_type": "-",
       "power_consumption": "-",
       "description": "AMD GPU - Radeon RX 5700 XT",
-      "image": "/image/GPU012.webp"
+      "image": "/image/gpu012.webp"
     },
     "GPU013": {
       "product_id": "GPU013",
@@ -549,7 +549,7 @@
       "ram_type": "-",
       "power_consumption": "-",
       "description": "AMD GPU - Radeon RX 6500 XT",
-      "image": "/image/GPU013.webp"
+      "image": "/image/gpu013.webp"
     },
     "GPU014": {
       "product_id": "GPU014",
@@ -563,7 +563,7 @@
       "ram_type": "-",
       "power_consumption": "-",
       "description": "AMD GPU - Radeon RX 6650 XT",
-      "image": "/image/GPU014.webp"
+      "image": "/image/gpu014.webp"
     },
     "GPU015": {
       "product_id": "GPU015",
@@ -577,7 +577,7 @@
       "ram_type": "-",
       "power_consumption": "-",
       "description": "AMD GPU - Radeon RX 7700 XT",
-      "image": "/image/GPU015.webp"
+      "image": "/image/gpu015.webp"
     },
     "GPU016": {
       "product_id": "GPU016",
@@ -591,7 +591,7 @@
       "ram_type": "-",
       "power_consumption": "-",
       "description": "AMD GPU - Radeon RX 7900 GRE",
-      "image": "/image/GPU016.webp"
+      "image": "/image/gpu016.webp"
     },
     "GPU017": {
       "product_id": "GPU017",
@@ -605,7 +605,7 @@
       "ram_type": "-",
       "power_consumption": "-",
       "description": "AMD GPU - Radeon RX 7900 XTX",
-      "image": "/image/GPU017.webp"
+      "image": "/image/gpu017.webp"
     },
     "GPU018": {
       "product_id": "GPU018",
@@ -619,7 +619,7 @@
       "ram_type": "-",
       "power_consumption": "-",
       "description": "Intel GPU - Arc B570",
-      "image": "/image/GPU018.webp"
+      "image": "/image/gpu018.webp"
     },
     "MB001": {
       "product_id": "MB001",
@@ -633,7 +633,7 @@
       "ram_type": "DDR5",
       "power_consumption": "-",
       "description": "ASUS Motherboard - ROG STRIX B650-A GAMING WIFI",
-      "image": "/image/MB001.webp"
+      "image": "/image/mb001.webp"
     },
     "MB002": {
       "product_id": "MB002",
@@ -647,7 +647,7 @@
       "ram_type": "DDR5",
       "power_consumption": "-",
       "description": "ASUS Motherboard - ROG STRIX X670E-A GAMING WIFI",
-      "image": "/image/MB002.webp"
+      "image": "/image/mb002.webp"
     },
     "MB003": {
       "product_id": "MB003",
@@ -661,7 +661,7 @@
       "ram_type": "DDR4",
       "power_consumption": "-",
       "description": "MSI Motherboard - PRO B660M-A DDR4",
-      "image": "/image/MB003.webp"
+      "image": "/image/mb003.webp"
     },
     "MB004": {
       "product_id": "MB004",
@@ -675,7 +675,7 @@
       "ram_type": "DDR4",
       "power_consumption": "-",
       "description": "MSI Motherboard - MAG B660M MORTAR WIFI DDR4",
-      "image": "/image/MB004.webp"
+      "image": "/image/mb004.webp"
     },
     "MB005": {
       "product_id": "MB005",
@@ -689,7 +689,7 @@
       "ram_type": "DDR5",
       "power_consumption": "-",
       "description": "MSI Motherboard - MAG B650M MORTAR WIFI",
-      "image": "/image/MB005.webp"
+      "image": "/image/mb005.webp"
     },
     "MB006": {
       "product_id": "MB006",
@@ -703,7 +703,7 @@
       "ram_type": "DDR5",
       "power_consumption": "-",
       "description": "MSI Motherboard - PRO B650M-A WIFI",
-      "image": "/image/MB006.webp"
+      "image": "/image/mb006.webp"
     },
     "MB007": {
       "product_id": "MB007",
@@ -717,7 +717,7 @@
       "ram_type": "DDR4",
       "power_consumption": "-",
       "description": "Gigabyte Motherboard - B660M DS3H DDR4",
-      "image": "/image/MB007.webp"
+      "image": "/image/mb007.webp"
     },
     "MB008": {
       "product_id": "MB008",
@@ -731,7 +731,7 @@
       "ram_type": "DDR5",
       "power_consumption": "-",
       "description": "Gigabyte Motherboard - X670 AORUS ELITE AX",
-      "image": "/image/MB008.webp"
+      "image": "/image/mb008.webp"
     },
     "MB009": {
       "product_id": "MB009",
@@ -745,7 +745,7 @@
       "ram_type": "DDR4",
       "power_consumption": "-",
       "description": "ASRock Motherboard - B760M Pro RS/D4",
-      "image": "/image/MB009.webp"
+      "image": "/image/mb009.webp"
     },
     "MB010": {
       "product_id": "MB010",
@@ -759,7 +759,7 @@
       "ram_type": "DDR5",
       "power_consumption": "-",
       "description": "ASRock Motherboard - B650M Pro RS",
-      "image": "/image/MB010.webp"
+      "image": "/image/mb010.webp"
     },
     "MB011": {
       "product_id": "MB011",
@@ -773,7 +773,7 @@
       "ram_type": "DDR5",
       "power_consumption": "-",
       "description": "ASRock Motherboard - X870 Pro RS",
-      "image": "/image/MB011.webp"
+      "image": "/image/mb011.webp"
     },
     "PSU001": {
       "product_id": "PSU001",
@@ -787,7 +787,7 @@
       "ram_type": "-",
       "power_consumption": "-",
       "description": "Corsair PSU - CX550",
-      "image": "/image/PSU001.webp"
+      "image": "/image/psu001.webp"
     },
     "PSU002": {
       "product_id": "PSU002",
@@ -801,7 +801,7 @@
       "ram_type": "-",
       "power_consumption": "-",
       "description": "Corsair PSU - CX650",
-      "image": "/image/PSU002.webp"
+      "image": "/image/psu002.webp"
     },
     "PSU003": {
       "product_id": "PSU003",
@@ -815,7 +815,7 @@
       "ram_type": "-",
       "power_consumption": "-",
       "description": "Corsair PSU - RM1000x",
-      "image": "/image/PSU003.webp"
+      "image": "/image/psu003.webp"
     },
     "PSU004": {
       "product_id": "PSU004",
@@ -829,7 +829,7 @@
       "ram_type": "-",
       "power_consumption": "-",
       "description": "Corsair PSU - HX1000i",
-      "image": "/image/PSU004.webp"
+      "image": "/image/psu004.webp"
     },
     "PSU005": {
       "product_id": "PSU005",
@@ -843,7 +843,7 @@
       "ram_type": "-",
       "power_consumption": "-",
       "description": "Cooler Master PSU - MWE Bronze 650",
-      "image": "/image/PSU005.webp"
+      "image": "/image/psu005.webp"
     },
     "PSU006": {
       "product_id": "PSU006",
@@ -857,7 +857,7 @@
       "ram_type": "-",
       "power_consumption": "-",
       "description": "Cooler Master PSU - MWE Gold 750 V2",
-      "image": "/image/PSU006.webp"
+      "image": "/image/psu006.webp"
     },
     "PSU007": {
       "product_id": "PSU007",
@@ -871,7 +871,7 @@
       "ram_type": "-",
       "power_consumption": "-",
       "description": "MSI PSU - MAG A550BN",
-      "image": "/image/PSU007.webp"
+      "image": "/image/psu007.webp"
     },
     "PSU008": {
       "product_id": "PSU008",
@@ -885,7 +885,7 @@
       "ram_type": "-",
       "power_consumption": "-",
       "description": "MSI PSU - MAG A750GL PCIE5",
-      "image": "/image/PSU008.webp"
+      "image": "/image/psu008.webp"
     },
     "RAM001": {
       "product_id": "RAM001",
@@ -899,7 +899,7 @@
       "ram_type": "DDR4",
       "power_consumption": "-",
       "description": "Kingston RAM - FURY Beast DDR4",
-      "image": "/image/RAM001.webp"
+      "image": "/image/ram001.webp"
     },
     "RAM002": {
       "product_id": "RAM002",
@@ -913,7 +913,7 @@
       "ram_type": "DDR4",
       "power_consumption": "-",
       "description": "Corsair RAM - Vengeance RGB Pro DDR4",
-      "image": "/image/RAM002.webp"
+      "image": "/image/ram002.webp"
     },
     "RAM003": {
       "product_id": "RAM003",
@@ -927,7 +927,7 @@
       "ram_type": "DDR5",
       "power_consumption": "-",
       "description": "Corsair RAM - Vengeance RGB DDR5",
-      "image": "/image/RAM003.webp"
+      "image": "/image/ram003.webp"
     },
     "RAM004": {
       "product_id": "RAM004",
@@ -941,7 +941,7 @@
       "ram_type": "DDR4",
       "power_consumption": "-",
       "description": "Corsair RAM - Dominator Platinum RGB DDR4",
-      "image": "/image/RAM004.webp"
+      "image": "/image/ram004.webp"
     },
     "SSD001": {
       "product_id": "SSD001",
@@ -955,7 +955,7 @@
       "ram_type": "-",
       "power_consumption": "-",
       "description": "Samsung SSD - 870 EVO 500GB",
-      "image": "/image/SSD001.webp"
+      "image": "/image/ssd001.webp"
     },
     "SSD002": {
       "product_id": "SSD002",
@@ -969,7 +969,7 @@
       "ram_type": "-",
       "power_consumption": "-",
       "description": "Samsung SSD - 870 EVO 1TB",
-      "image": "/image/SSD002.webp"
+      "image": "/image/ssd002.webp"
     },
     "SSD003": {
       "product_id": "SSD003",
@@ -983,7 +983,7 @@
       "ram_type": "-",
       "power_consumption": "-",
       "description": "Samsung SSD - 990 EVO 1TB",
-      "image": "/image/SSD003.webp"
+      "image": "/image/ssd003.webp"
     },
     "SSD004": {
       "product_id": "SSD004",
@@ -997,7 +997,7 @@
       "ram_type": "-",
       "power_consumption": "-",
       "description": "Kingston SSD - A400 480GB",
-      "image": "/image/SSD004.webp"
+      "image": "/image/ssd004.webp"
     },
     "SSD005": {
       "product_id": "SSD005",
@@ -1011,7 +1011,7 @@
       "ram_type": "-",
       "power_consumption": "-",
       "description": "Kingston SSD - NV3 2TB",
-      "image": "/image/SSD005.webp"
+      "image": "/image/ssd005.webp"
     },
     "SSD006": {
       "product_id": "SSD006",
@@ -1025,7 +1025,7 @@
       "ram_type": "-",
       "power_consumption": "-",
       "description": "Kingston SSD - KC3000 2TB",
-      "image": "/image/SSD006.webp"
+      "image": "/image/ssd006.webp"
     },
     "SSD007": {
       "product_id": "SSD007",
@@ -1039,7 +1039,7 @@
       "ram_type": "-",
       "power_consumption": "-",
       "description": "WD SSD - Black SN850X 2TB",
-      "image": "/image/SSD007.webp"
+      "image": "/image/ssd007.webp"
     }
   }
 }
