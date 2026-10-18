@@ -3,10 +3,18 @@ const cors = require("cors");
 const XLSX = require("xlsx");
 const fs = require("fs");
 const path = require("path");
+const { execFileSync } = require("child_process");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const distPath = path.join(__dirname, "dist");
+
+// Render may start the server without running the npm install lifecycle script.
+if (!fs.existsSync(path.join(distPath, "index.html"))) {
+  console.log("React build not found; building the frontend before starting the server...");
+  execFileSync(process.execPath, [path.join(__dirname, "node_modules", "vite", "bin", "vite.js"), "build"], { cwd: __dirname, stdio: "inherit" });
+  execFileSync(process.execPath, [path.join(__dirname, "scripts", "copy-assets.js")], { cwd: __dirname, stdio: "inherit" });
+}
 
 app.use(cors());
 app.use(express.json());
