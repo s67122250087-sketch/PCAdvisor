@@ -1,87 +1,11 @@
 {
-  "categories": {
-    "cpu": {
-      "name": "CPU",
-      "description": "Central Processing Unit",
-      "image_url": "/images/categories/cpu.webp"
-    },
-    "gpu": {
-      "name": "GPU",
-      "description": "Graphics Processing Unit",
-      "image_url": "/images/categories/gpu.webp"
-    },
-    "motherboard": {
-      "name": "Motherboard",
-      "description": "Mainboard for computer components",
-      "image_url": "/images/categories/motherboard.webp"
-    },
-    "ram": {
-      "name": "RAM",
-      "description": "Computer memory",
-      "image_url": "/images/categories/ram.webp"
-    },
-    "ssd": {
-      "name": "SSD",
-      "description": "Solid State Drive",
-      "image_url": "/images/categories/ssd.webp"
-    },
-    "psu": {
-      "name": "PSU",
-      "description": "Power Supply Unit",
-      "image_url": "/images/categories/psu.webp"
-    },
-    "case": {
-      "name": "Case",
-      "description": "Computer case",
-      "image_url": "/images/categories/case.webp"
-    }
-  },
-  "brands": {
-    "intel": {
-      "name": "Intel",
-      "logo_url": "/images/brands/intel.webp"
-    },
-    "amd": {
-      "name": "AMD",
-      "logo_url": "/images/brands/amd.webp"
-    },
-    "nvidia": {
-      "name": "NVIDIA",
-      "logo_url": "/images/brands/nvidia.webp"
-    },
-    "asus": {
-      "name": "ASUS",
-      "logo_url": "/images/brands/asus.webp"
-    }
-  },
-  "products": {
-    "cpu001": {
-      "name": "Intel Core i5",
-      "brand_id": "intel",
-      "category_id": "cpu",
-      "price": 4590,
-      "socket": "LGA1700",
-      "cores": 6,
-      "threads": 12,
-      "ram_type": "DDR5",
-      "power_consumption": 65,
-      "description": "Intel desktop processor",
-      "image_url": "/images/products/cpu001.webp"
-    },
-    "gpu001": {
-      "name": "GeForce RTX 4060",
-      "brand_id": "nvidia",
-      "category_id": "gpu",
-      "price": 10900,
-      "description": "Graphics card for gaming and graphics processing",
-      "image_url": "/images/products/gpu001.webp"
-    }
-  },
-  "favorites": {
-    "guest": {
-      "cpu001": true,
-      "gpu001": true
-    }
+  "name": "pcadvisor",
+  "version": "1.0.0",
+  "private": true,
+  "description": "PC hardware advisor web application",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
   },
   "dependencies": {
     "cors": "^2.8.6",
