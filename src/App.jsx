@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "firebase/auth";
 import { onValue, ref } from "firebase/database";
 import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
@@ -154,7 +154,7 @@ export default function App() {
   return <>
     <Header page={page} user={user} onAuth={() => user ? signOut(auth) : setAuthDialog(true)} />
     <main>
-      {page === "/" && <HomePage products={products} categories={categories} loading={catalogLoading} />}
+      {page === "/" && <HomePage products={products} categories={categories} loading={catalogLoading} featuredGpu={products.find(item => item.category === "GPU")} />}
       {page === "/products.html" && <ProductsPage products={products} categories={categories} brands={brands} favorites={favorites} compareList={compareList} loading={catalogLoading} error={catalogError} onFavorite={toggleFavorite} onCompare={toggleCompare} onSelect={setSelectedProduct} />}
       {page === "/builder.html" && <BuilderPage />}
       {page === "/favorites.html" && <FavoritesPage products={products} favorites={favorites} loading={catalogLoading} error={catalogError} onFavorite={toggleFavorite} onCompare={toggleCompare} compareList={compareList} onSelect={setSelectedProduct} />}
@@ -178,7 +178,7 @@ function Header({ page, user, onAuth }) {
 
 function Footer() { return <footer>PC Advisor • React + Firebase Realtime Database</footer>; }
 
-function HomePage({ products, categories, loading }) {
+function HomePage({ products, categories, loading, featuredGpu }) {
   const counts = categories.map(category => [category, products.filter(item => item.category === category).length]);
   return <>
     <section className="hero"><div className="hero-inner">
@@ -198,8 +198,61 @@ function HomePage({ products, categories, loading }) {
         <div className="hero-orbit orbit-one" /><div className="hero-orbit orbit-two" />
       </div>
     </div></section>
-    <section className="home-intro"><span>01 / เริ่มต้นได้ง่าย</span><p>ไม่ว่าคุณจะกำลังประกอบคอมเครื่องแรก หรืออัปเกรดเครื่องเดิม<br />เครื่องมือที่จำเป็นอยู่ตรงนี้แล้ว</p></section>
+    <ScrollSpecimen product={featuredGpu} />
   </>;
+}
+
+const specimenFrames = [
+  { label: "THE CORE", title: "เริ่มจากชิ้นส่วนที่ใช่", body: "สำรวจอุปกรณ์จริงจากแคตตาล็อก เลือกดูรายละเอียดและราคาก่อนตัดสินใจ", signal: "LIVE CATALOG", metric: "70+", metricLabel: "COMPONENTS" },
+  { label: "RAW POWER", title: "พลังที่เลือกได้เอง", body: "เทียบแบรนด์และระดับประสิทธิภาพ เพื่อหาชิ้นส่วนที่พอดีกับเกมและงานของคุณ", signal: "PERFORMANCE", metric: "01", metricLabel: "YOUR BUILD" },
+  { label: "THERMAL FLOW", title: "บาลานซ์ทั้งเครื่อง", body: "คิดให้ครบทั้งเคส พลังงาน และระบบระบายความร้อนก่อนจัดลงสเปก", signal: "SYSTEM FLOW", metric: "360°", metricLabel: "BUILD VIEW" },
+  { label: "SMART MATCH", title: "งบและความเข้ากันได้", body: "ใช้ตัวช่วยจัดสเปกตามงบประมาณ และตรวจดูรายละเอียดของแต่ละชิ้นส่วน", signal: "SMART ASSIST", metric: "SYNC", metricLabel: "YOUR BUDGET" },
+  { label: "YOUR NEXT BUILD", title: "เครื่องที่เป็นสไตล์คุณ", body: "พร้อมเริ่มเลือกชิ้นส่วนที่ใช่แล้วหรือยัง? เปิดแคตตาล็อกและเริ่มสร้างสเปกของคุณ", signal: "READY TO BUILD", metric: "GO", metricLabel: "BUILD YOURS" }
+];
+
+function ScrollSpecimen({ product }) {
+  const sectionRef = useRef(null);
+  const [activeFrame, setActiveFrame] = useState(0);
+
+  useEffect(() => {
+    const section = sectionRef.current;
+    if (!section || !("IntersectionObserver" in window)) return;
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) setActiveFrame(Number(entry.target.dataset.specStep));
+      });
+    }, { threshold: 0.12, rootMargin: "-34% 0px -34% 0px" });
+    section.querySelectorAll("[data-spec-step]").forEach(step => observer.observe(step));
+    return () => observer.disconnect();
+  }, []);
+
+  const frame = specimenFrames[activeFrame];
+  return <section className="specimen-showcase" ref={sectionRef} aria-label="PC Advisor immersive showcase">
+    <div className="specimen-stage" data-frame={activeFrame}>
+      <div className="specimen-stage-head"><span><i /> IMMERSIVE BUILD SYSTEM</span><b>{String(activeFrame + 1).padStart(2, "0")} <small>/ {String(specimenFrames.length).padStart(2, "0")}</small></b></div>
+      <div className="specimen-viewport">
+        <div className="specimen-grid" />
+        <div className="specimen-ring ring-a" /><div className="specimen-ring ring-b" /><div className="specimen-ring ring-c" />
+        <div className="specimen-cross cross-a">×</div><div className="specimen-cross cross-b">+</div>
+        <div className="specimen-object" key={product?.product_id || "gpu-specimen"}>
+          {product?.image ? <img src={product.image} alt={product.name} onError={event => { event.currentTarget.style.opacity = "0"; }} /> : <div className="specimen-chip-fallback">GPU</div>}
+        </div>
+        <div className="specimen-object-label"><span>FEATURED COMPONENT</span><b>{product?.name || "GRAPHICS PROCESSOR"}</b><small>{product?.brand || "PC ADVISOR / SYSTEM"}</small></div>
+        <div className="specimen-floating-tag tag-top">{frame.signal}<i /></div>
+        <div className="specimen-floating-tag tag-bottom"><span>PRICE / THB</span><b>{product ? `฿${money(product.price)}` : "—"}</b></div>
+        <div className="specimen-scanline" />
+      </div>
+      <div className="specimen-stage-foot"><span>SCROLL TO EXPLORE</span><div className="specimen-progress"><i style={{ width: `${((activeFrame + 1) / specimenFrames.length) * 100}%` }} /></div><span>PC / 2026</span></div>
+    </div>
+    <div className="specimen-steps">
+      {specimenFrames.map((scene, index) => <article className={`specimen-step${activeFrame === index ? " is-active" : ""}`} data-spec-step={index} key={scene.label}>
+        <div className="specimen-step-meta"><span>0{index + 1}</span><i />{scene.label}</div>
+        <h2>{scene.title}</h2><p>{scene.body}</p>
+        <div className="specimen-metric"><b>{scene.metric}</b><span>{scene.metricLabel}</span></div>
+        {index === specimenFrames.length - 1 && <div className="specimen-final-actions"><a className="btn" href="/products.html">เปิดแคตตาล็อก <span>↗</span></a><a className="specimen-text-link" href="/builder.html">จัดสเปกตามงบ →</a></div>}
+      </article>)}
+    </div>
+  </section>;
 }
 
 function ProductsPage({ products, categories, brands, favorites, compareList, loading, error, onFavorite, onCompare, onSelect }) {
