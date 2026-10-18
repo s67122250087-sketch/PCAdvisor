@@ -5,11 +5,21 @@
   "description": "PC hardware advisor web application",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "build": "vite build && node scripts/copy-assets.js",
+    "dev": "vite",
+    "start": "npm run build && node server.js"
   },
   "dependencies": {
     "cors": "^2.8.6",
     "express": "^5.2.1",
+    "firebase": "^12.0.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "vite": "^7.0.0",
     "xlsx": "^0.18.5"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true
   }
 }

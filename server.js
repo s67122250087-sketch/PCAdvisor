@@ -6,10 +6,11 @@ const path = require("path");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const distPath = path.join(__dirname, "dist");
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, "public")));
+app.use(express.static(distPath));
 
 const excelPath = path.join(__dirname, "data", "PCAdvisor_data.xlsx");
 
@@ -151,30 +152,9 @@ app.post("/api/recommend", (req, res) => {
   res.json({ budget, total, remaining: Math.max(0, budget - total), products: selected });
 });
 
-// Routing สำหรับแยกหน้า HTML อิสระ (Multi-page Support)
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
-});
-
-app.get("/products.html", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "products.html"));
-});
-
-app.get("/builder.html", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "builder.html"));
-});
-
-app.get("/favorites.html", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "favorites.html"));
-});
-
-app.get("/about.html", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "about.html"));
-});
-
-// ดักจับหน้าอื่นๆ ที่ไม่มีอยู่ (Fallback สำหรับ Express v5)
+// React handles the existing .html paths as client-side page routes.
 app.get(/.*/, (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
+  res.sendFile(path.join(distPath, "index.html"));
 });
 
 app.listen(PORT, () => {
