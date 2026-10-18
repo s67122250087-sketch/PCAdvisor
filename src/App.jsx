@@ -170,8 +170,8 @@ export default function App() {
 
 function Header({ page, user, onAuth }) {
   return <header><div className="nav">
-    <a className="logo" href="/" aria-label="PC Advisor หน้าแรก"><img src="/logo01.png" alt="PC Advisor Logo" /></a>
-    <nav>{pages.map(([path, label]) => <a key={path} href={path} className={page === path ? "active" : ""}>{label}</a>)}</nav>
+    <a className="logo" href="/" aria-label="PC Advisor หน้าแรก"><img src="/logo01.png" alt="" /><span>PC Advisor<small>HARDWARE GUIDE</small></span></a>
+    <nav aria-label="เมนูหลัก">{pages.map(([path, label]) => <a key={path} href={path} className={page === path ? "active" : ""}>{label}</a>)}</nav>
     <div className="member-area"><span>{user ? `👤 ${user.email || "สมาชิก"}` : "Guest"}</span><button className="auth-button" onClick={onAuth}>{user ? "ออกจากระบบ" : "เข้าสู่ระบบ"}</button></div>
   </div></header>;
 }
@@ -180,15 +180,26 @@ function Footer() { return <footer>PC Advisor • React + Firebase Realtime Data
 
 function HomePage({ products, categories, loading }) {
   const counts = categories.map(category => [category, products.filter(item => item.category === category).length]);
-  return <section className="hero"><div>
-    <span className="pill">REACT + FIREBASE</span>
-    <h1>ค้นหาอุปกรณ์ PC<br /><span>ง่าย รวดเร็ว ในที่เดียว</span></h1>
-    <p>ค้นหาและเปรียบเทียบอุปกรณ์คอมพิวเตอร์ พร้อมเลือกชิ้นส่วนให้เหมาะกับงบประมาณและการใช้งาน</p>
-    <a className="btn" href="/products.html">เริ่มค้นหาสินค้า →</a>
-  </div><div className="hero-card">
-    <div className="pc-icon">🖥️</div><h3>{loading ? "กำลังโหลด..." : `${products.length} รายการ`}</h3><p>รายการอุปกรณ์ในระบบ</p>
-    <div className="chips">{counts.slice(0, 6).map(([category, count]) => <span className="chip" key={category}>{category} {count}</span>)}</div>
-  </div></section>;
+  return <>
+    <section className="hero"><div className="hero-inner">
+      <div className="hero-copy">
+        <span className="pill"><i /> PC HARDWARE FINDER</span>
+        <h1>ประกอบคอม<br />ให้เป็นเรื่อง<span>ง่าย</span></h1>
+        <p>ค้นหา เปรียบเทียบ และจัดสเปกคอมพิวเตอร์<br className="desktop-break" /> ให้พอดีกับงบและการใช้งานของคุณ</p>
+        <div className="hero-actions"><a className="btn" href="/products.html">เลือกดูอุปกรณ์ <span>↗</span></a><a className="hero-secondary" href="/builder.html">ให้เราช่วยจัดสเปก <span>→</span></a></div>
+        <div className="hero-note"><span>✳</span> ข้อมูลสินค้าอัปเดตจากฐานข้อมูลโดยตรง</div>
+      </div>
+      <div className="hero-card">
+        <div className="hero-card-top"><span>PC ADVISOR / CATALOG</span><span className="live-dot">LIVE</span></div>
+        <div className="hero-card-number">{loading ? "—" : String(products.length).padStart(2, "0")}<small> รายการ</small></div>
+        <p>อุปกรณ์พร้อมให้คุณเลือก</p>
+        <div className="category-preview">{counts.slice(0, 6).map(([category, count], index) => <span className="category-row" key={category}><i className={`category-symbol symbol-${index}`}>{["◈", "▧", "◉", "▦", "⌁", "▤"][index]}</i><b>{category}</b><small>{String(count).padStart(2, "0")}</small></span>)}</div>
+        <a href="/products.html" className="catalog-link">สำรวจแคตตาล็อกทั้งหมด <span>↗</span></a>
+        <div className="hero-orbit orbit-one" /><div className="hero-orbit orbit-two" />
+      </div>
+    </div></section>
+    <section className="home-intro"><span>01 / เริ่มต้นได้ง่าย</span><p>ไม่ว่าคุณจะกำลังประกอบคอมเครื่องแรก หรืออัปเกรดเครื่องเดิม<br />เครื่องมือที่จำเป็นอยู่ตรงนี้แล้ว</p></section>
+  </>;
 }
 
 function ProductsPage({ products, categories, brands, favorites, compareList, loading, error, onFavorite, onCompare, onSelect }) {
