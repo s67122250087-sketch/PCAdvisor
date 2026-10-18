@@ -1,8 +1,27 @@
+import { auth, db } from "./firebase.js";
+import {
+  createUserWithEmailAndPassword,
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  signOut
+} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-auth.js";
+import {
+  doc,
+  getDoc,
+  serverTimestamp,
+  setDoc
+} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
+
 const $ = id => document.getElementById(id);
 let currentProducts = [];
-let favorites = JSON.parse(localStorage.getItem("pc_favorites")) || [];
+const legacyFavorites = localStorage.getItem("pc_favorites");
+if (!localStorage.getItem("pc_favorites_guest") && legacyFavorites) {
+  localStorage.setItem("pc_favorites_guest", legacyFavorites);
+}
+localStorage.removeItem("pc_favorites");
+let favorites = storedFavorites("pc_favorites_guest");
 let compareList = JSON.parse(localStorage.getItem("pc_compare")) || [];
-let currentUser = JSON.parse(localStorage.getItem("pc_user")) || null;
+let currentUser = null;
 
 const fmt = n => new Intl.NumberFormat("th-TH").format(Number(n || 0));
 
@@ -116,11 +135,54 @@ function toggleFavorite(id, event) {
   } else {
     favorites.push(id);
   }
-  localStorage.setItem("pc_favorites", JSON.stringify(favorites));
+  void persistFavorites();
   
   // อัปเดตการแสดงผลทันทีไม่ว่าจะอยู่หน้าไหน
   updateFavoritesSection();
   loadProducts();
+}
+
+function storedFavorites(key) {
+  try {
+    const value = JSON.parse(localStorage.getItem(key) || "[]");
+    return Array.isArray(value) ? value : [];
+  } catch {
+    return [];
+  }
+}
+
+async function persistFavorites() {
+  const storageKey = currentUser ? `pc_favorites_${currentUser.uid}` : "pc_favorites_guest";
+  localStorage.setItem(storageKey, JSON.stringify(favorites));
+  if (!currentUser) return;
+
+  try {
+    await setDoc(doc(db, "users", currentUser.uid), {
+      favorites,
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+  } catch (error) {
+    console.error("บันทึกรายการโปรดไป Firebase ไม่สำเร็จ:", error);
+  }
+}
+
+async function loadUserFavorites(user) {
+  const guestFavorites = storedFavorites("pc_favorites_guest");
+  const localUserFavorites = storedFavorites(`pc_favorites_${user.uid}`);
+
+  try {
+    const snapshot = await getDoc(doc(db, "users", user.uid));
+    const cloudFavorites = snapshot.exists() && Array.isArray(snapshot.data().favorites)
+      ? snapshot.data().favorites
+      : [];
+    favorites = [...new Set([...cloudFavorites, ...localUserFavorites, ...guestFavorites])];
+    localStorage.setItem("pc_favorites_guest", "[]");
+    await persistFavorites();
+  } catch (error) {
+    console.error("โหลดรายการโปรดจาก Firebase ไม่สำเร็จ:", error);
+    favorites = [...new Set([...localUserFavorites, ...guestFavorites])];
+    localStorage.setItem(`pc_favorites_${user.uid}`, JSON.stringify(favorites));
+  }
 }
 
 // แสดงผลสินค้าในหน้า favorites.html
@@ -205,7 +267,7 @@ function updateMemberUI() {
   if (!userDisplay || !authBtn) return;
 
   if (currentUser) {
-    userDisplay.textContent = `👤 ${currentUser.username}`;
+    userDisplay.textContent = `👤 ${currentUser.email || "สมาชิก"}`;
     authBtn.textContent = "ออกจากระบบ";
     authBtn.style.background = "#ff4757";
   } else {
@@ -215,19 +277,82 @@ function updateMemberUI() {
   }
 }
 
+function ensureAuthDialog() {
+  let dialog = $("authDialog");
+  if (dialog) return dialog;
+
+  dialog = document.createElement("dialog");
+  dialog.id = "authDialog";
+  dialog.style.cssText = "border:0;border-radius:12px;padding:0;max-width:420px;width:calc(100% - 32px);box-shadow:0 20px 60px #0005";
+  dialog.innerHTML = `
+    <form id="authForm" style="padding:24px;display:grid;gap:14px;color:#222">
+      <button id="closeAuth" type="button" aria-label="ปิด" style="justify-self:end;border:0;background:none;font-size:24px;cursor:pointer">×</button>
+      <h2 id="authTitle" style="margin:0">เข้าสู่ระบบ</h2>
+      <label>อีเมล<input id="authEmail" type="email" required autocomplete="email" style="display:block;width:100%;box-sizing:border-box;padding:10px;margin-top:5px"></label>
+      <label>รหัสผ่าน<input id="authPassword" type="password" required minlength="6" autocomplete="current-password" style="display:block;width:100%;box-sizing:border-box;padding:10px;margin-top:5px"></label>
+      <p id="authMessage" role="status" style="margin:0;color:#c0392b"></p>
+      <button id="authSubmit" type="submit" style="padding:10px;background:#007bff;color:#fff;border:0;border-radius:6px;cursor:pointer">เข้าสู่ระบบ</button>
+      <button id="authModeToggle" type="button" style="padding:8px;border:0;background:none;color:#007bff;cursor:pointer">ยังไม่มีบัญชี? สมัครสมาชิก</button>
+    </form>`;
+  document.body.appendChild(dialog);
+
+  let mode = "signin";
+  const form = $("authForm");
+  $("closeAuth").addEventListener("click", () => dialog.close());
+  $("authModeToggle").addEventListener("click", () => {
+    mode = mode === "signin" ? "signup" : "signin";
+    $("authTitle").textContent = mode === "signin" ? "เข้าสู่ระบบ" : "สมัครสมาชิก";
+    $("authSubmit").textContent = mode === "signin" ? "เข้าสู่ระบบ" : "สร้างบัญชี";
+    $("authModeToggle").textContent = mode === "signin" ? "ยังไม่มีบัญชี? สมัครสมาชิก" : "มีบัญชีแล้ว? เข้าสู่ระบบ";
+    $("authPassword").autocomplete = mode === "signin" ? "current-password" : "new-password";
+    $("authMessage").textContent = "";
+  });
+  form.addEventListener("submit", async event => {
+    event.preventDefault();
+    const email = $("authEmail").value.trim();
+    const password = $("authPassword").value;
+    const submit = $("authSubmit");
+    submit.disabled = true;
+    $("authMessage").textContent = "กำลังเชื่อมต่อ...";
+    try {
+      if (mode === "signup") await createUserWithEmailAndPassword(auth, email, password);
+      else await signInWithEmailAndPassword(auth, email, password);
+      dialog.close();
+      form.reset();
+    } catch (error) {
+      const messages = {
+        "auth/email-already-in-use": "อีเมลนี้มีบัญชีแล้ว",
+        "auth/invalid-email": "รูปแบบอีเมลไม่ถูกต้อง",
+        "auth/weak-password": "รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร",
+        "auth/invalid-credential": "อีเมลหรือรหัสผ่านไม่ถูกต้อง",
+        "auth/operation-not-allowed": "กรุณาเปิด Email/Password ใน Firebase Authentication ก่อน"
+      };
+      $("authMessage").textContent = messages[error.code] || "เข้าสู่ระบบไม่สำเร็จ กรุณาลองอีกครั้ง";
+    } finally {
+      submit.disabled = false;
+    }
+  });
+  return dialog;
+}
+
 function toggleAuth() {
   if (currentUser) {
-    currentUser = null;
-    localStorage.removeItem("pc_user");
-  } else {
-    const username = prompt("กรอกชื่อผู้ใช้สำหรับเข้าระบบ:", "Gamer_Pro");
-    if (username) {
-      currentUser = { username };
-      localStorage.setItem("pc_user", JSON.stringify(currentUser));
-    }
+    void signOut(auth);
+    return;
   }
-  updateMemberUI();
+  ensureAuthDialog().showModal();
 }
+
+onAuthStateChanged(auth, async user => {
+  currentUser = user;
+  if (user) await loadUserFavorites(user);
+  else favorites = storedFavorites("pc_favorites_guest").length
+    ? storedFavorites("pc_favorites_guest")
+    : storedFavorites("pc_favorites");
+  updateMemberUI();
+  if ($("productsGrid")) await loadProducts();
+  if ($("favoritesGrid")) await updateFavoritesSection();
+});
 
 // ฟังก์ชันเริ่มต้นทำงานหลัก (แยกตามหน้า HTML ที่เปิดอยู่)
 async function init() {
@@ -337,5 +462,14 @@ if ($("recommendBtn")) {
     }
   });
 }
+
+Object.assign(window, {
+  clearCompare,
+  showComparisonModal,
+  showProduct,
+  toggleAuth,
+  toggleCompare,
+  toggleFavorite
+});
 
 init();
