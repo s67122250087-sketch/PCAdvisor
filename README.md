@@ -53,7 +53,14 @@ PCAdvisor NEW/
 
 ## 📊 Data Source
 
-The system relies on `PCAdvisor_data.xlsx` located in the `data/` directory, which contains structured hardware specifications, compatibility rules, and advisory matrices processed dynamically by the backend.
+The source hardware catalog is `data/PCAdvisor_data.xlsx`. `data/firebase-import.json` is the Firebase Realtime Database import file, generated from its 70 rows and organized into `categories`, `brands`, and `products` nodes. The browser reads the catalog from Realtime Database; product recommendations continue to use the Express API.
+
+## Firebase
+
+- Realtime Database URL: `https://pcadvisor-7e1f4-default-rtdb.asia-southeast1.firebasedatabase.app`
+- Import `data/firebase-import.json` at the database root to seed the catalog.
+- The browser reads the public catalog from `categories`, `brands`, and `products`. `database.rules.json` denies public writes and denies access to other paths.
+- Firebase Authentication and Cloud Firestore store member accounts and per-user favorites separately.
 
 ## 📄 License
 

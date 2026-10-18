@@ -1,0 +1,15 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "categories": {
+      ".read": true
+    },
+    "brands": {
+      ".read": true
+    },
+    "products": {
+      ".read": true
+    }
+  }
+}

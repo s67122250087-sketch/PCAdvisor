@@ -1,4 +1,4 @@
-import { auth, db } from "./firebase.js";
+import { auth, db, rtdb } from "./firebase.js";
 import {
   createUserWithEmailAndPassword,
   onAuthStateChanged,
@@ -11,6 +11,7 @@ import {
   serverTimestamp,
   setDoc
 } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
+import { get, ref } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-database.js";
 
 const $ = id => document.getElementById(id);
 let currentProducts = [];
@@ -25,10 +26,83 @@ let currentUser = null;
 
 const fmt = n => new Intl.NumberFormat("th-TH").format(Number(n || 0));
 
+let catalogCache;
+
+async function getCatalog() {
+  if (catalogCache) return catalogCache;
+
+  const [productsSnapshot, categoriesSnapshot, brandsSnapshot] = await Promise.all([
+    get(ref(rtdb, "products")),
+    get(ref(rtdb, "categories")),
+    get(ref(rtdb, "brands"))
+  ]);
+
+  if (!productsSnapshot.exists()) throw new Error("ไม่พบข้อมูลสินค้าใน Firebase Realtime Database");
+  const rawProducts = productsSnapshot.val();
+  const products = Object.entries(rawProducts).map(([id, product]) => ({
+    ...product,
+    product_id: product.product_id || id,
+    category: product.category || product.category_id || "",
+    brand: product.brand || product.brand_id || "",
+    image: product.image || product.image_url || "https://placehold.co/150x150?text=No+Image"
+  }));
+  const categories = Object.values(categoriesSnapshot.val() || {}).map(item => item.name || item);
+  const brands = Object.values(brandsSnapshot.val() || {}).map(item => item.name || item);
+
+  catalogCache = { products, categories, brands };
+  return catalogCache;
+}
+
 async function api(url, options) {
-  const res = await fetch(url, options);
-  if (!res.ok) throw new Error("เกิดข้อผิดพลาด");
-  return res.json();
+  if (url.startsWith("/api/recommend")) {
+    const res = await fetch(url, options);
+    if (!res.ok) throw new Error("เกิดข้อผิดพลาด");
+    return res.json();
+  }
+
+  const catalog = await getCatalog();
+  if (url === "/api/categories") return catalog.categories;
+  if (url === "/api/brands") return catalog.brands;
+  if (url === "/api/stats") {
+    const categories = {};
+    for (const product of catalog.products) {
+      if (product.category) categories[product.category] = (categories[product.category] || 0) + 1;
+    }
+    return { totalProducts: catalog.products.length, categories, brands: catalog.brands.length };
+  }
+
+  const detailMatch = url.match(/^\/api\/products\/([^?]+)$/);
+  if (detailMatch) {
+    const product = catalog.products.find(item => String(item.product_id) === decodeURIComponent(detailMatch[1]));
+    if (!product) throw new Error("ไม่พบสินค้า");
+    return product;
+  }
+
+  if (url.startsWith("/api/products")) {
+    const params = new URLSearchParams(url.split("?")[1] || "");
+    let products = [...catalog.products];
+    const search = params.get("search")?.toLowerCase();
+    const category = params.get("category");
+    const brand = params.get("brand");
+    const minPrice = params.get("minPrice");
+    const maxPrice = params.get("maxPrice");
+    const sort = params.get("sort");
+
+    if (search) products = products.filter(product =>
+      [product.name, product.brand, product.category, product.description, product.product_id]
+        .some(value => String(value || "").toLowerCase().includes(search))
+    );
+    if (category && category !== "All") products = products.filter(product => product.category === category);
+    if (brand && brand !== "All") products = products.filter(product => product.brand === brand);
+    if (minPrice !== null && minPrice !== "") products = products.filter(product => Number(product.price) >= Number(minPrice));
+    if (maxPrice !== null && maxPrice !== "") products = products.filter(product => Number(product.price) <= Number(maxPrice));
+    if (sort === "price-asc") products.sort((a, b) => Number(a.price) - Number(b.price));
+    if (sort === "price-desc") products.sort((a, b) => Number(b.price) - Number(a.price));
+    if (sort === "name-asc") products.sort((a, b) => String(a.name).localeCompare(String(b.name)));
+    return { total: products.length, products };
+  }
+
+  throw new Error("ไม่พบข้อมูลที่ร้องขอ");
 }
 
 // F01, F04, F06: การแสดงผลการ์ดสินค้าพร้อมปุ่มรายการโปรดและเปรียบเทียบ
