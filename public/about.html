@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PC Advisor | เกี่ยวกับระบบ</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <div class="nav" style="display: flex; justify-content: space-between; align-items: center;">
+    <div class="logo">
+  <a href="index.html" style="display: flex; align-items: center; text-decoration: none;">
+    <img src="logo01.png" alt="PC Advisor Logo" style="height: 38px; object-fit: contain;">
+  </a>
+</div>
+<nav style="display: flex; gap: 20px;">
+  <a href="index.html">หน้าแรก</a>
+  <a href="products.html">สินค้า</a>
+  <a href="builder.html">จัดสเปก</a>
+  <a href="favorites.html">รายการโปรด</a>
+  <a href="about.html">เกี่ยวกับ</a>
+</nav>
+    <div id="memberArea" style="display: flex; align-items: center; gap: 10px;">
+      <span id="userDisplay" style="color: #fff; font-size: 0.9rem;">Guest</span>
+      <button id="authBtn" onclick="toggleAuth()" style="padding: 6px 12px; font-size: 0.85rem; background: #007bff; color: #fff; border: none; border-radius: 4px; cursor: pointer;">เข้าสู่ระบบ</button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section id="about" class="about section" style="margin-top: 40px;">
+    <h2>เกี่ยวกับ Prototype</h2>
+    <p>เว็บไซต์นี้พัฒนาด้วย Frontend แบบ HTML/CSS/JavaScript และ Backend Node.js + Express โดยอ่านข้อมูลสินค้าจากไฟล์ Excel ผ่าน API</p>
+    <div class="api-list">
+      <code>GET /api/products</code>
+      <code>GET /api/categories</code>
+      <code>GET /api/brands</code>
+      <code>POST /api/recommend</code>
+    </div>
+  </section>
+</main>
+
+<footer>PC Advisor Prototype • Node.js + Express</footer>
+<script src="script.js"></script>
+</body>
+</html>
