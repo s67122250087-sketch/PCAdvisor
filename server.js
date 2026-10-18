@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const XLSX = require("xlsx");
+const fs = require("fs");
 const path = require("path");
 
 const app = express();
@@ -11,6 +12,30 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 
 const excelPath = path.join(__dirname, "data", "PCAdvisor_data.xlsx");
+
+// Match local image names without relying on the host filesystem's casing rules.
+function resolveImagePath(image) {
+  const value = String(image || "");
+  if (/^https?:\/\//i.test(value)) return value;
+
+  const relativePath = value.replace(/\\/g, "/").replace(/^\/+/, "");
+  const directoryPart = path.posix.dirname(relativePath);
+  const fileName = path.posix.basename(relativePath);
+  const directory = path.join(__dirname, "public", directoryPart === "." ? "" : directoryPart);
+
+  try {
+    const actualFileName = fs.readdirSync(directory).find(
+      candidate => candidate.toLowerCase() === fileName.toLowerCase()
+    );
+    if (actualFileName) {
+      return `/${path.posix.join(directoryPart === "." ? "" : directoryPart, actualFileName)}`;
+    }
+  } catch (error) {
+    // Keep the configured path if its directory is unavailable.
+  }
+
+  return `/${relativePath}`;
+}
 
 // ฟังก์ชันโหลดและแปลงข้อมูลจาก Excel
 function loadProducts() {
@@ -23,7 +48,7 @@ function loadProducts() {
     return rows.map(row => ({
       ...row,
       price: Number(row.price) || 0,
-      image: row.image || row.image_url || "https://placehold.co/150x150?text=No+Image"
+      image: resolveImagePath(row.image || row.image_url || "https://placehold.co/150x150?text=No+Image")
     }));
   } catch (error) {
     console.error("❌ ไม่สามารถอ่านไฟล์ Excel ได้:", error.message);
