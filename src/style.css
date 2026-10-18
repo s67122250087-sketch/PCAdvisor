@@ -363,3 +363,49 @@ footer { color: #71839a; background: #070b13; border-top: 1px solid #172235; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
+
+/* Keep every interface surface dark and add restrained, interactive HUD details. */
+html, body, #root, main { min-height: 100%; background-color: #080d17; }
+body::before { position: fixed; z-index: 0; inset: 0; background: radial-gradient(circle at 12% 26%, rgba(68, 75, 173, .07), transparent 24%), radial-gradient(circle at 90% 68%, rgba(22, 145, 174, .06), transparent 26%); content: ''; pointer-events: none; }
+#root { position: relative; z-index: 1; }
+button, input, select, textarea, option { color-scheme: dark; }
+.filters, .filters input, .filters select, .budget-box input, .auth-box input,
+.modal-box, .recommend-card, .recommend-item, .related-item, .empty-state,
+.detail-table th, .close, .icon-button, .card, .product-image,
+.technology-list span, .api-list code, .compare-tray, .home-intro {
+  background-color: #0c1524;
+}
+.filters { background: rgba(12, 21, 36, .82); backdrop-filter: blur(14px); }
+.filters input, .filters select, .budget-box input, .auth-box input { background: #080f1b; }
+select option { color: #dceafb; background: #0c1626; }
+.modal-box, .recommend-card, .recommend-item, .related-item, .empty-state,
+.detail-table th, .close, .icon-button, .card, .product-image,
+.technology-list span, .api-list code, .compare-tray { background-color: #0d1727; }
+.product-image { background-image: radial-gradient(ellipse at 50% 48%, rgba(43, 102, 152, .2), transparent 68%), linear-gradient(145deg, #0d1727, #09111f); }
+.detail-table tr:hover td { background: rgba(81, 244, 255, .035); }
+.hero-card { transition: transform .35s ease, box-shadow .35s ease; }
+.hero-card:hover { transform: translateY(-4px) perspective(900px) rotateX(1deg); box-shadow: 0 32px 95px rgba(0, 0, 0, .56), 0 0 45px rgba(81, 244, 255, .15), inset 0 1px rgba(255, 255, 255, .08); }
+.hero-orbit { animation: orbit-breathe 10s ease-in-out infinite; }
+.hero-orbit.orbit-two { animation-delay: -4s; }
+.card { transform-style: preserve-3d; }
+.card::after { position: absolute; z-index: 2; inset: 0; border-radius: inherit; background: linear-gradient(#51f4ff, #51f4ff) 0 0 / 24px 1px, linear-gradient(#51f4ff, #51f4ff) 0 0 / 1px 24px, linear-gradient(#a671ff, #a671ff) 100% 100% / 24px 1px, linear-gradient(#a671ff, #a671ff) 100% 100% / 1px 24px; background-repeat: no-repeat; content: ''; opacity: 0; pointer-events: none; transition: opacity .24s ease; }
+.card:hover::after { opacity: .62; }
+.product-image { transition: transform .35s cubic-bezier(.2, .8, .2, 1), filter .35s ease; }
+.product-card:hover .product-image { filter: drop-shadow(0 0 16px rgba(81, 244, 255, .14)) brightness(1.08); transform: translateY(-2px) scale(1.025); }
+.btn { position: relative; overflow: hidden; isolation: isolate; }
+.btn::after { position: absolute; z-index: -1; top: -60%; left: -80%; width: 45%; height: 220%; background: rgba(81, 244, 255, .48); content: ''; filter: blur(8px); transform: rotate(22deg); transition: left .55s ease; }
+.btn:hover::after { left: 145%; }
+.nav nav a:focus-visible, .btn:focus-visible, .auth-button:focus-visible,
+.hero-secondary:focus-visible, .catalog-link:focus-visible, button:focus-visible,
+a:focus-visible, input:focus-visible, select:focus-visible {
+  outline: 2px solid #51f4ff; outline-offset: 3px;
+}
+.filters input:focus, .filters select:focus, .budget-box input:focus, .auth-box input:focus { background-color: #091422; }
+.compare-tray { background-color: rgba(9, 16, 28, .96); }
+.modal { background-color: rgba(2, 5, 12, .84); }
+.text-button:hover { color: #d0a9ff; }
+.related-item:hover { background-color: #12233a; }
+.selected-favorite { color: #ff8eaf; background-color: #301a2b; }
+.selected-compare { color: #6df4ff; background-color: #102b38; }
+
+@keyframes product-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
