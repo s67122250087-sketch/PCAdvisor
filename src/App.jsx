@@ -21,6 +21,12 @@ const PRODUCT_FIELDS = [
   ["ram_type", "ชนิด RAM"], ["power_consumption", "การใช้พลังงาน"]
 ];
 const money = value => new Intl.NumberFormat("th-TH").format(Number(value || 0));
+const reportCategoryLabel = category => ({
+  problem: "แจ้งปัญหา",
+  suggestion: "ข้อเสนอแนะ",
+  product: "ข้อมูลสินค้า",
+  evaluation: "แบบประเมินความพึงพอใจ"
+}[category] || category || "ทั่วไป");
 const readArray = key => {
   try {
     const value = JSON.parse(localStorage.getItem(key) || "[]");
@@ -361,6 +367,8 @@ function BuilderPage() {
 function ReportPage({ user, onLogin }) {
   const [status, setStatus] = useState("");
   const [sending, setSending] = useState(false);
+  const [surveyStatus, setSurveyStatus] = useState("");
+  const [sendingSurvey, setSendingSurvey] = useState(false);
   async function submitReport(event) {
     event.preventDefault();
     if (!user) return;
@@ -390,14 +398,86 @@ function ReportPage({ user, onLogin }) {
       setSending(false);
     }
   }
+
+  async function submitSurvey(event) {
+    event.preventDefault();
+    if (!user) {
+      setSurveyStatus("กรุณาเข้าสู่ระบบก่อนส่งแบบประเมิน ระบบจะเก็บคำตอบไว้ให้หลังเข้าสู่ระบบ");
+      onLogin();
+      return;
+    }
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
+    const surveyLabels = {
+      ease: "ความง่ายในการใช้งาน",
+      search: "ความสะดวกในการค้นหาสินค้า",
+      build: "การจัดสเปกและดูราคารวม",
+      compatibility: "การตรวจสอบความเข้ากันได้",
+      overall: "ความพึงพอใจโดยรวม"
+    };
+    const ratings = Object.fromEntries(Object.entries(surveyLabels).map(([key, label]) => [key, Number(form.get(key))]));
+    const comment = String(form.get("comment") || "").trim();
+    const message = [
+      ...Object.entries(surveyLabels).map(([key, label]) => `${label}: ${ratings[key]}/5`),
+      comment ? `ข้อเสนอแนะเพิ่มเติม: ${comment}` : "ข้อเสนอแนะเพิ่มเติม: ไม่มี"
+    ].join("\n");
+    setSendingSurvey(true);
+    setSurveyStatus("");
+    try {
+      const surveyRef = push(ref(database, "reports"));
+      await set(surveyRef, {
+        subject: "แบบประเมินความพึงพอใจ",
+        category: "evaluation",
+        message,
+        ratings,
+        userId: user.uid,
+        userEmail: user.email || "",
+        status: "new",
+        createdAt: databaseServerTimestamp()
+      });
+      formElement.reset();
+      setSurveyStatus("ขอบคุณที่ช่วยประเมินการใช้งานครับ");
+    } catch (error) {
+      console.error("ส่งแบบประเมินไม่สำเร็จ:", error);
+      setSurveyStatus("ส่งแบบประเมินไม่สำเร็จ กรุณาลองอีกครั้ง");
+    } finally {
+      setSendingSurvey(false);
+    }
+  }
+
+  const surveyQuestions = [
+    ["ease", "เว็บไซต์ใช้งานง่ายและเข้าใจได้"],
+    ["search", "ค้นหาและกรองอุปกรณ์ได้สะดวก"],
+    ["build", "การจัดสเปกและคำนวณราคารวมมีประโยชน์"],
+    ["compatibility", "ข้อมูลช่วยให้ตรวจสอบความเข้ากันได้ของอุปกรณ์"],
+    ["overall", "ความพึงพอใจโดยรวมต่อเว็บไซต์"]
+  ];
+
   return <section className="section report-page">
     <div className="section-head"><div><p className="eyebrow">PC ADVISOR</p><h2>แจ้งปัญหา / ส่งข้อเสนอแนะ</h2><p>แจ้งปัญหาการใช้งานหรือเสนอสิ่งที่อยากให้ปรับปรุง ข้อความจะส่งให้ผู้ดูแลระบบตรวจสอบ</p></div></div>
-    {!user ? <div className="admin-message"><p>กรุณาเข้าสู่ระบบก่อนส่งรายงาน เพื่อให้ผู้ดูแลติดต่อกลับได้</p><button className="btn" onClick={onLogin}>เข้าสู่ระบบเพื่อแจ้งปัญหา</button></div> : <form className="report-form" onSubmit={submitReport}>
-      <label>ประเภท<select name="category"><option value="problem">แจ้งปัญหา</option><option value="suggestion">เสนอแนะ</option><option value="product">ข้อมูลสินค้า</option></select></label>
-      <label>รายละเอียด<textarea name="message" required minLength="5" maxLength="2000" rows="6" placeholder="อธิบายสิ่งที่พบให้ทีมงานเข้าใจได้ง่ายขึ้น" /></label>
-      <button className="btn" disabled={sending}>{sending ? "กำลังส่ง..." : "ส่งรายงาน"}</button>
-      {status && <p role="status" className="report-status">{status}</p>}
-    </form>}
+    {!user && <div className="admin-message"><p>เข้าสู่ระบบเพื่อส่งรายงานหรือแบบประเมิน คำถามประเมินด้านล่างเปิดให้ดูก่อนได้</p><button className="btn" onClick={onLogin}>เข้าสู่ระบบ</button></div>}
+    {user && <form className="report-form" onSubmit={submitReport}>
+        <h3>แจ้งปัญหาหรือข้อเสนอแนะ</h3>
+        <label>ประเภท<select name="category"><option value="problem">แจ้งปัญหา</option><option value="suggestion">เสนอแนะ</option><option value="product">ข้อมูลสินค้า</option></select></label>
+        <label>รายละเอียด<textarea name="message" required minLength="5" maxLength="2000" rows="5" placeholder="อธิบายสิ่งที่พบให้ทีมงานเข้าใจได้ง่ายขึ้น" /></label>
+        <button className="btn" disabled={sending}>{sending ? "กำลังส่ง..." : "ส่งรายงาน"}</button>
+        {status && <p role="status" className="report-status">{status}</p>}
+      </form>}
+
+      <form className="survey-form" onSubmit={submitSurvey}>
+        <div className="survey-heading"><span className="eyebrow">แบบประเมินสำหรับผู้ใช้งาน</span><h3>ช่วยประเมินการใช้งาน PC Advisor</h3><p>เลือกคะแนนในแต่ละข้อจาก 1 ถึง 5 โดย 1 = น้อยที่สุด และ 5 = มากที่สุด</p></div>
+        <div className="survey-questions">{surveyQuestions.map(([name, question]) => <fieldset className="survey-question" key={name}>
+          <legend>{question}<span aria-hidden="true"> *</span></legend>
+          <div className="survey-scale" role="radiogroup" aria-label={question}>{[1, 2, 3, 4, 5].map(score => <label className="survey-option" key={score}>
+            <input type="radio" name={name} value={score} required />
+            <span>{score}</span>
+          </label>)}</div>
+          <div className="survey-scale-hints"><span>น้อยที่สุด</span><span>มากที่สุด</span></div>
+        </fieldset>)}</div>
+        <label className="survey-comment">ข้อเสนอแนะเพิ่มเติม (ไม่บังคับ)<textarea name="comment" rows="3" maxLength="1000" placeholder="อยากให้ปรับปรุงหรือเพิ่มอะไรในเว็บไซต์?" /></label>
+        <button className="btn" disabled={sendingSurvey}>{sendingSurvey ? "กำลังส่งแบบประเมิน..." : user ? "ส่งแบบประเมิน" : "เข้าสู่ระบบเพื่อส่งแบบประเมิน"}</button>
+        {surveyStatus && <p role="status" className="report-status">{surveyStatus}</p>}
+      </form>
   </section>;
 }
 
@@ -496,7 +576,7 @@ function AdminPage({ user, isAdmin, adminCheckReady, adminCheckError, adminValue
 
   return <section className="section admin-page">
     <div className="section-head"><div><p className="eyebrow">PC ADVISOR</p><h2>จัดการระบบ</h2><p>ลงชื่อเข้าใช้เป็น {user.email || "ผู้ดูแล"}</p></div></div>
-    <div className="admin-tabs"><button className={tab === "products" ? "active" : ""} onClick={() => setTab("products")}>จัดการสินค้า ({products.length})</button><button className={tab === "reports" ? "active" : ""} onClick={() => setTab("reports")}>รายงานจากผู้ใช้ ({reports.filter(item => item.status !== "reviewed").length})</button></div>
+    <div className="admin-tabs"><button className={tab === "products" ? "active" : ""} onClick={() => setTab("products")}>จัดการสินค้า ({products.length})</button><button className={tab === "reports" ? "active" : ""} onClick={() => setTab("reports")}>รายงาน / แบบประเมิน ({reports.filter(item => item.status !== "reviewed").length})</button></div>
     {notice && <p role="status" className="admin-notice">{notice}</p>}
     {tab === "products" ? <div className="admin-product-layout">
       <div className="admin-product-list"><button className="btn" onClick={() => { setSelectedKey("__new__"); setEditor({ product_id: "", name: "", category: "", brand: "", price: 0, image: "", socket: "", cores: "", threads: "", ram_type: "", power_consumption: "", description: "" }); setNotice(""); }}>เพิ่มสินค้าใหม่</button>
@@ -506,6 +586,6 @@ function AdminPage({ user, isAdmin, adminCheckReady, adminCheckError, adminValue
         <h3>{selectedKey === "__new__" ? "เพิ่มสินค้า" : "แก้ไขข้อมูลสินค้า"}</h3>
         {selectedKey ? <><p>กรอกหรือแก้ไขรายละเอียดสินค้าในช่องด้านล่าง ข้อมูลจะอัปเดตให้ผู้ใช้เห็นทันที</p><div className="product-edit-fields">{PRODUCT_FIELDS.map(([field, label]) => <label key={field}>{label}<input value={editor[field] ?? ""} type={field === "price" ? "number" : "text"} min={field === "price" ? "0" : undefined} onChange={event => setEditor(current => ({ ...current, [field]: event.target.value }))} /></label>)}<label className="product-description-field">รายละเอียด<textarea rows="4" value={editor.description ?? ""} onChange={event => setEditor(current => ({ ...current, description: event.target.value }))} /></label></div><div className="admin-actions"><button className="btn" disabled={saving}>{saving ? "กำลังบันทึก..." : "บันทึกสินค้า"}</button>{selectedKey !== "__new__" && <button type="button" className="secondary" onClick={deleteProduct}>ลบสินค้า</button>}</div></> : <p>เลือกสินค้าจากรายการ หรือกด “เพิ่มสินค้าใหม่”</p>}
       </form>
-    </div> : <><p className="live-status" role="status">● {reportsReady ? "เชื่อมต่อแล้ว · รายงานอัปเดตอัตโนมัติแบบเรียลไทม์" : "กำลังเชื่อมต่อรายงาน..."}</p><div className="report-list">{reports.length ? reports.map(report => <article className="report-card" key={report.id}><div className="report-card-heading"><div><span className={report.status === "reviewed" ? "report-badge reviewed" : "report-badge"}>{report.status === "reviewed" ? "รับทราบแล้ว" : "รอตรวจสอบ"}</span><h3>{report.subject || "ไม่มีหัวข้อ"}</h3></div><span>{report.createdAt ? new Date(Number(report.createdAt)).toLocaleString("th-TH") : "เวลาส่งไม่พร้อมใช้งาน"}</span></div><p>{report.message}</p><small>ประเภท: {report.category || "ทั่วไป"} · ผู้ส่ง: {report.userEmail || report.userId}</small>{report.status !== "reviewed" ? <button className="secondary" onClick={() => markReportReviewed(report.id)}>รับทราบรายงาน</button> : <button className="secondary danger" onClick={() => deleteReport(report)}>ลบรายงาน</button>}</article>) : <div className="empty-state">ยังไม่มีรายงานจากผู้ใช้</div>}</div></>}
+    </div> : <><p className="live-status" role="status">● {reportsReady ? "เชื่อมต่อแล้ว · รายงานและแบบประเมินอัปเดตอัตโนมัติ" : "กำลังเชื่อมต่อรายงาน..."}</p><div className="report-list">{reports.length ? reports.map(report => <article className="report-card" key={report.id}><div className="report-card-heading"><div><span className={report.status === "reviewed" ? "report-badge reviewed" : "report-badge"}>{report.status === "reviewed" ? "รับทราบแล้ว" : "รอตรวจสอบ"}</span><h3>{report.subject || "ไม่มีหัวข้อ"}</h3></div><span>{report.createdAt ? new Date(Number(report.createdAt)).toLocaleString("th-TH") : "เวลาส่งไม่พร้อมใช้งาน"}</span></div><p>{report.message}</p><small>ประเภท: {reportCategoryLabel(report.category)} · ผู้ส่ง: {report.userEmail || report.userId}</small>{report.status !== "reviewed" ? <button className="secondary" onClick={() => markReportReviewed(report.id)}>รับทราบรายงาน</button> : <button className="secondary danger" onClick={() => deleteReport(report)}>ลบรายงาน</button>}</article>) : <div className="empty-state">ยังไม่มีรายงานจากผู้ใช้</div>}</div></>}
   </section>;
 }
