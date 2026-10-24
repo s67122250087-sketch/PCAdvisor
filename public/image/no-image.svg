@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="240" viewBox="0 0 320 240" role="img" aria-label="ไม่มีรูปสินค้า">
+  <rect width="320" height="240" rx="18" fill="#16243a"/>
+  <g fill="none" stroke="#69c9ff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="100" y="54" width="120" height="108" rx="12"/>
+    <circle cx="137" cy="94" r="13"/>
+    <path d="m111 147 35-34 21 20 17-16 26 30"/>
+  </g>
+  <text x="160" y="201" text-anchor="middle" font-family="Arial,sans-serif" font-size="15" fill="#a0afc4">ไม่มีรูปสินค้า</text>
+</svg>

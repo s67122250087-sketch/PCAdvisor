@@ -9,7 +9,21 @@
       ".read": true
     },
     "products": {
-      ".read": true
+      ".read": true,
+      ".write": "auth != null && root.child('admins').child(auth.uid).val() === true"
+    },
+    "admins": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": false
+      }
+    },
+    "reports": {
+      ".read": "auth != null && root.child('admins').child(auth.uid).val() === true",
+      "$reportId": {
+        ".write": "auth != null && ((!data.exists() && newData.child('userId').val() === auth.uid) || root.child('admins').child(auth.uid).val() === true)",
+        ".validate": "newData.hasChildren(['subject', 'category', 'message', 'userId', 'status', 'createdAt']) && newData.child('subject').isString() && newData.child('subject').val().length <= 120 && newData.child('message').isString() && newData.child('message').val().length <= 2000 && newData.child('userId').isString() && (newData.child('status').val() === 'new' || newData.child('status').val() === 'reviewed')"
+      }
     }
   }
 }

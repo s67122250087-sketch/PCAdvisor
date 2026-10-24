@@ -1,15 +1,24 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "firebase/auth";
-import { onValue, ref } from "firebase/database";
+import { onValue, push, ref, remove, serverTimestamp as databaseServerTimestamp, set, update } from "firebase/database";
 import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import { auth, database, firestore } from "./firebase.js";
+import { imageFiles } from "./imageFiles.js";
 
 const pages = [
   ["/", "หน้าแรก"],
   ["/products.html", "สินค้า"],
   ["/builder.html", "จัดสเปก"],
   ["/favorites.html", "รายการโปรด"],
-  ["/about.html", "เกี่ยวกับ"]
+  ["/report.html", "แจ้งปัญหา"]
+];
+const ADMIN_PATH = "/admin.html";
+const FALLBACK_IMAGE = "/image/no-image.svg";
+const PRODUCT_FIELDS = [
+  ["product_id", "รหัสสินค้า"], ["name", "ชื่อสินค้า"], ["category", "หมวดหมู่"],
+  ["brand", "ยี่ห้อ"], ["price", "ราคา (บาท)"], ["image", "ลิงก์รูปภาพ"],
+  ["socket", "Socket"], ["cores", "จำนวน Core"], ["threads", "จำนวน Thread"],
+  ["ram_type", "ชนิด RAM"], ["power_consumption", "การใช้พลังงาน"]
 ];
 const money = value => new Intl.NumberFormat("th-TH").format(Number(value || 0));
 const readArray = key => {
@@ -24,20 +33,42 @@ const readArray = key => {
 function normalizeProducts(value) {
   return Object.entries(value || {}).map(([id, item]) => ({
     ...item,
+    databaseKey: id,
+    sourceData: item,
     product_id: item.product_id || id,
     category: item.category || item.category_id || "",
     brand: item.brand || item.brand_id || "",
-    image: item.image || item.image_url || "https://placehold.co/150x150?text=No+Image"
+    image: normalizeImage(item.image || item.image_url)
   }));
+}
+
+function normalizeImage(value) {
+  const image = String(value || "").trim();
+  if (!image) return FALLBACK_IMAGE;
+  if (/^https?:\/\//i.test(image)) return image;
+  const cleanPath = image.split(/[?#]/)[0].replace(/\\/g, "/");
+  const filename = cleanPath.split("/").filter(Boolean).pop();
+  const actualFilename = filename && imageFiles[filename.toLowerCase()];
+  return actualFilename ? `/image/${encodeURIComponent(actualFilename)}` : FALLBACK_IMAGE;
+}
+
+function useFallbackImage(event) {
+  event.currentTarget.onerror = null;
+  event.currentTarget.src = FALLBACK_IMAGE;
 }
 
 export default function App() {
   const pathname = window.location.pathname;
-  const page = pages.some(([path]) => path === pathname) ? pathname : "/";
+  const page = [...pages.map(([path]) => path), ADMIN_PATH].includes(pathname) ? pathname : "/";
   const [products, setProducts] = useState([]);
   const [catalogLoading, setCatalogLoading] = useState(true);
   const [catalogError, setCatalogError] = useState("");
   const [user, setUser] = useState(null);
+  const [authReady, setAuthReady] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [adminCheckReady, setAdminCheckReady] = useState(false);
+  const [adminCheckError, setAdminCheckError] = useState("");
+  const [adminValue, setAdminValue] = useState(null);
   const [favorites, setFavorites] = useState(() => {
     const old = localStorage.getItem("pc_favorites");
     if (!localStorage.getItem("pc_favorites_guest") && old) localStorage.setItem("pc_favorites_guest", old);
@@ -52,7 +83,32 @@ export default function App() {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [compareDialog, setCompareDialog] = useState(false);
 
-  useEffect(() => onAuthStateChanged(auth, setUser), []);
+  useEffect(() => onAuthStateChanged(auth, nextUser => { setUser(nextUser); if (nextUser) setAdminCheckReady(false); setAuthReady(true); }), []);
+
+  useEffect(() => {
+    if (!user) {
+      setIsAdmin(false);
+      setAdminCheckError("");
+      setAdminValue(null);
+      setAdminCheckReady(true);
+      return;
+    }
+    setAdminCheckReady(false);
+    setAdminCheckError("");
+    return onValue(ref(database, `admins/${user.uid}`), snapshot => {
+      const value = snapshot.val();
+      setAdminValue(value);
+      setIsAdmin(value === true);
+      setAdminCheckError("");
+      setAdminCheckReady(true);
+    }, error => {
+      console.error("ตรวจสอบสิทธิ์ผู้ดูแลไม่สำเร็จ:", error);
+      setIsAdmin(false);
+      setAdminValue(null);
+      setAdminCheckError(error.code || "database/permission-denied");
+      setAdminCheckReady(true);
+    });
+  }, [user]);
 
   useEffect(() => {
     const productsRef = ref(database, "products");
@@ -152,13 +208,14 @@ export default function App() {
   }
 
   return <>
-    <Header page={page} user={user} onAuth={() => user ? signOut(auth) : setAuthDialog(true)} />
+    <Header page={page} user={user} authReady={authReady} isAdmin={isAdmin} adminCheckReady={adminCheckReady} adminCheckError={adminCheckError} onAuth={() => user ? signOut(auth) : setAuthDialog(true)} />
     <main>
-      {page === "/" && <HomePage products={products} categories={categories} loading={catalogLoading} featuredGpu={products.find(item => item.category === "GPU")} />}
+      {page === "/" && <HomePage products={products} categories={categories} loading={catalogLoading} />}
       {page === "/products.html" && <ProductsPage products={products} categories={categories} brands={brands} favorites={favorites} compareList={compareList} loading={catalogLoading} error={catalogError} onFavorite={toggleFavorite} onCompare={toggleCompare} onSelect={setSelectedProduct} />}
       {page === "/builder.html" && <BuilderPage />}
       {page === "/favorites.html" && <FavoritesPage products={products} favorites={favorites} loading={catalogLoading} error={catalogError} onFavorite={toggleFavorite} onCompare={toggleCompare} compareList={compareList} onSelect={setSelectedProduct} />}
-      {page === "/about.html" && <AboutPage />}
+      {page === "/report.html" && <ReportPage user={user} onLogin={() => { setAuthMode("signin"); setAuthDialog(true); }} />}
+      {page === ADMIN_PATH && <AdminPage user={user} isAdmin={isAdmin} adminCheckReady={adminCheckReady} adminCheckError={adminCheckError} adminValue={adminValue} products={products} />}
     </main>
     <Footer />
     {selectedProduct && <ProductDialog product={selectedProduct} products={products} onClose={() => setSelectedProduct(null)} onSelect={setSelectedProduct} />}
@@ -168,91 +225,28 @@ export default function App() {
   </>;
 }
 
-function Header({ page, user, onAuth }) {
+function Header({ page, user, authReady, isAdmin, adminCheckReady, adminCheckError, onAuth }) {
+  const accountRole = !authReady ? "กำลังตรวจสอบบัญชี" : !user ? "ผู้เยี่ยมชม" : !adminCheckReady ? "กำลังตรวจสอบสิทธิ์" : adminCheckError ? "อ่านสิทธิ์แอดมินไม่ได้" : isAdmin ? "แอดมิน" : "ผู้ใช้ทั่วไป";
   return <header><div className="nav">
-    <a className="logo" href="/" aria-label="PC Advisor หน้าแรก"><img src="/logo01.png" alt="" /><span>PC Advisor<small>HARDWARE GUIDE</small></span></a>
-    <nav aria-label="เมนูหลัก">{pages.map(([path, label]) => <a key={path} href={path} className={page === path ? "active" : ""}>{label}</a>)}</nav>
-    <div className="member-area"><span>{user ? `👤 ${user.email || "สมาชิก"}` : "Guest"}</span><button className="auth-button" onClick={onAuth}>{user ? "ออกจากระบบ" : "เข้าสู่ระบบ"}</button></div>
+    <a className="logo" href="/" aria-label="PC Advisor หน้าแรก"><img src="/logo01.png" alt="PC Advisor Logo" /></a>
+    <nav>{pages.map(([path, label]) => <a key={path} href={path} className={page === path ? "active" : ""}>{label}</a>)}</nav>
+    <div className="member-area">{user ? <span className="account-email">👤 {user.email || "สมาชิก"}</span> : <span className="account-email header-slot" aria-hidden="true" />}<span className={`account-role ${isAdmin ? "admin-role" : ""}`} aria-live="polite">{accountRole}</span>{isAdmin ? <a className="admin-link" href={ADMIN_PATH}>จัดการระบบ</a> : <span className="admin-link-slot" aria-hidden="true" />}<button className="auth-button" onClick={onAuth}>{user ? "ออกจากระบบ" : "เข้าสู่ระบบ"}</button></div>
   </div></header>;
 }
 
-function Footer() { return <footer>PC Advisor • React + Firebase Realtime Database</footer>; }
+function Footer() { return <footer>© PC Advisor · ตัวช่วยเลือกอุปกรณ์คอมพิวเตอร์</footer>; }
 
-function HomePage({ products, categories, loading, featuredGpu }) {
+function HomePage({ products, categories, loading }) {
   const counts = categories.map(category => [category, products.filter(item => item.category === category).length]);
-  return <>
-    <section className="hero"><div className="hero-inner">
-      <div className="hero-copy">
-        <span className="pill"><i /> PC HARDWARE FINDER</span>
-        <h1>ประกอบคอม<br />ให้เป็นเรื่อง<span>ง่าย</span></h1>
-        <p>ค้นหา เปรียบเทียบ และจัดสเปกคอมพิวเตอร์<br className="desktop-break" /> ให้พอดีกับงบและการใช้งานของคุณ</p>
-        <div className="hero-actions"><a className="btn" href="/products.html">เลือกดูอุปกรณ์ <span>↗</span></a><a className="hero-secondary" href="/builder.html">ให้เราช่วยจัดสเปก <span>→</span></a></div>
-        <div className="hero-note"><span>✳</span> ข้อมูลสินค้าอัปเดตจากฐานข้อมูลโดยตรง</div>
-      </div>
-      <div className="hero-card">
-        <div className="hero-card-top"><span>PC ADVISOR / CATALOG</span><span className="live-dot">LIVE</span></div>
-        <div className="hero-card-number">{loading ? "—" : String(products.length).padStart(2, "0")}<small> รายการ</small></div>
-        <p>อุปกรณ์พร้อมให้คุณเลือก</p>
-        <div className="category-preview">{counts.slice(0, 6).map(([category, count], index) => <span className="category-row" key={category}><i className={`category-symbol symbol-${index}`}>{["◈", "▧", "◉", "▦", "⌁", "▤"][index]}</i><b>{category}</b><small>{String(count).padStart(2, "0")}</small></span>)}</div>
-        <a href="/products.html" className="catalog-link">สำรวจแคตตาล็อกทั้งหมด <span>↗</span></a>
-        <div className="hero-orbit orbit-one" /><div className="hero-orbit orbit-two" />
-      </div>
-    </div></section>
-    <ScrollSpecimen product={featuredGpu} />
-  </>;
-}
-
-const specimenFrames = [
-  { label: "THE CORE", title: "เริ่มจากชิ้นส่วนที่ใช่", body: "สำรวจอุปกรณ์จริงจากแคตตาล็อก เลือกดูรายละเอียดและราคาก่อนตัดสินใจ", signal: "LIVE CATALOG", metric: "70+", metricLabel: "COMPONENTS" },
-  { label: "RAW POWER", title: "พลังที่เลือกได้เอง", body: "เทียบแบรนด์และระดับประสิทธิภาพ เพื่อหาชิ้นส่วนที่พอดีกับเกมและงานของคุณ", signal: "PERFORMANCE", metric: "01", metricLabel: "YOUR BUILD" },
-  { label: "THERMAL FLOW", title: "บาลานซ์ทั้งเครื่อง", body: "คิดให้ครบทั้งเคส พลังงาน และระบบระบายความร้อนก่อนจัดลงสเปก", signal: "SYSTEM FLOW", metric: "360°", metricLabel: "BUILD VIEW" },
-  { label: "SMART MATCH", title: "งบและความเข้ากันได้", body: "ใช้ตัวช่วยจัดสเปกตามงบประมาณ และตรวจดูรายละเอียดของแต่ละชิ้นส่วน", signal: "SMART ASSIST", metric: "SYNC", metricLabel: "YOUR BUDGET" },
-  { label: "YOUR NEXT BUILD", title: "เครื่องที่เป็นสไตล์คุณ", body: "พร้อมเริ่มเลือกชิ้นส่วนที่ใช่แล้วหรือยัง? เปิดแคตตาล็อกและเริ่มสร้างสเปกของคุณ", signal: "READY TO BUILD", metric: "GO", metricLabel: "BUILD YOURS" }
-];
-
-function ScrollSpecimen({ product }) {
-  const sectionRef = useRef(null);
-  const [activeFrame, setActiveFrame] = useState(0);
-
-  useEffect(() => {
-    const section = sectionRef.current;
-    if (!section || !("IntersectionObserver" in window)) return;
-    const observer = new IntersectionObserver(entries => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) setActiveFrame(Number(entry.target.dataset.specStep));
-      });
-    }, { threshold: 0.12, rootMargin: "-34% 0px -34% 0px" });
-    section.querySelectorAll("[data-spec-step]").forEach(step => observer.observe(step));
-    return () => observer.disconnect();
-  }, []);
-
-  const frame = specimenFrames[activeFrame];
-  return <section className="specimen-showcase" ref={sectionRef} aria-label="PC Advisor immersive showcase">
-    <div className="specimen-stage" data-frame={activeFrame}>
-      <div className="specimen-stage-head"><span><i /> IMMERSIVE BUILD SYSTEM</span><b>{String(activeFrame + 1).padStart(2, "0")} <small>/ {String(specimenFrames.length).padStart(2, "0")}</small></b></div>
-      <div className="specimen-viewport">
-        <div className="specimen-grid" />
-        <div className="specimen-ring ring-a" /><div className="specimen-ring ring-b" /><div className="specimen-ring ring-c" />
-        <div className="specimen-cross cross-a">×</div><div className="specimen-cross cross-b">+</div>
-        <div className="specimen-object" key={product?.product_id || "gpu-specimen"}>
-          {product?.image ? <img src={product.image} alt={product.name} onError={event => { event.currentTarget.style.opacity = "0"; }} /> : <div className="specimen-chip-fallback">GPU</div>}
-        </div>
-        <div className="specimen-object-label"><span>FEATURED COMPONENT</span><b>{product?.name || "GRAPHICS PROCESSOR"}</b><small>{product?.brand || "PC ADVISOR / SYSTEM"}</small></div>
-        <div className="specimen-floating-tag tag-top">{frame.signal}<i /></div>
-        <div className="specimen-floating-tag tag-bottom"><span>PRICE / THB</span><b>{product ? `฿${money(product.price)}` : "—"}</b></div>
-        <div className="specimen-scanline" />
-      </div>
-      <div className="specimen-stage-foot"><span>SCROLL TO EXPLORE</span><div className="specimen-progress"><i style={{ width: `${((activeFrame + 1) / specimenFrames.length) * 100}%` }} /></div><span>PC / 2026</span></div>
-    </div>
-    <div className="specimen-steps">
-      {specimenFrames.map((scene, index) => <article className={`specimen-step${activeFrame === index ? " is-active" : ""}`} data-spec-step={index} key={scene.label}>
-        <div className="specimen-step-meta"><span>0{index + 1}</span><i />{scene.label}</div>
-        <h2>{scene.title}</h2><p>{scene.body}</p>
-        <div className="specimen-metric"><b>{scene.metric}</b><span>{scene.metricLabel}</span></div>
-        {index === specimenFrames.length - 1 && <div className="specimen-final-actions"><a className="btn" href="/products.html">เปิดแคตตาล็อก <span>↗</span></a><a className="specimen-text-link" href="/builder.html">จัดสเปกตามงบ →</a></div>}
-      </article>)}
-    </div>
-  </section>;
+  return <section className="hero"><div>
+    <span className="pill">เลือกอุปกรณ์คอมได้ง่ายขึ้น</span>
+    <h1>ค้นหาอุปกรณ์ PC<br /><span>ง่าย รวดเร็ว ในที่เดียว</span></h1>
+    <p>ค้นหาและเปรียบเทียบอุปกรณ์คอมพิวเตอร์ พร้อมเลือกชิ้นส่วนให้เหมาะกับงบประมาณและการใช้งาน</p>
+    <a className="btn" href="/products.html">เริ่มค้นหาสินค้า →</a>
+  </div><div className="hero-card">
+    <div className="pc-icon">🖥️</div><h3>{loading ? "กำลังโหลด..." : `${products.length} รายการ`}</h3><p>รายการอุปกรณ์ในระบบ</p>
+    <div className="chips">{counts.slice(0, 6).map(([category, count]) => <span className="chip" key={category}>{category} {count}</span>)}</div>
+  </div></section>;
 }
 
 function ProductsPage({ products, categories, brands, favorites, compareList, loading, error, onFavorite, onCompare, onSelect }) {
@@ -293,9 +287,10 @@ function ProductsPage({ products, categories, brands, favorites, compareList, lo
 }
 
 function ProductCard({ product, favorite, compared, onFavorite, onCompare, onSelect }) {
+  const [favoriteFeedback, setFavoriteFeedback] = useState("");
   return <article className="card product-card" onClick={() => onSelect(product)}>
-    <div className="card-actions"><button className={favorite ? "icon-button selected-favorite" : "icon-button"} aria-label="เพิ่มหรือลบรายการโปรด" onClick={e => { e.stopPropagation(); onFavorite(product.product_id); }}>❤️</button><button className={compared ? "icon-button selected-compare" : "icon-button"} aria-label="เปรียบเทียบ" onClick={e => { e.stopPropagation(); onCompare(product.product_id); }}>⚖️</button></div>
-    <img className="product-image" src={product.image} alt={product.name} onError={e => { e.currentTarget.src = "https://placehold.co/150x150?text=No+Image"; }} />
+    <div className="card-actions"><button type="button" className={favorite ? "icon-button favorite-button selected-favorite" : "icon-button favorite-button"} aria-label={favorite ? "นำออกจากรายการโปรด" : "เพิ่มในรายการโปรด"} aria-pressed={favorite} title={favorite ? "นำออกจากรายการโปรด" : "เพิ่มในรายการโปรด"} onClick={e => { e.stopPropagation(); setFavoriteFeedback(favorite ? "นำออกจากรายการโปรดแล้ว" : "บันทึกในรายการโปรดแล้ว"); onFavorite(product.product_id); }}><span key={favorite ? "saved" : "unsaved"} className="favorite-icon" aria-hidden="true">{favorite ? "♥" : "♡"}</span><span className="sr-only" aria-live="polite">{favoriteFeedback}</span></button><button type="button" className={compared ? "icon-button compare-button selected-compare" : "icon-button compare-button"} aria-label={compared ? "นำออกจากรายการเปรียบเทียบ" : "เพิ่มเพื่อเปรียบเทียบ"} aria-pressed={compared} title={compared ? "นำออกจากรายการเปรียบเทียบ" : "เพิ่มเพื่อเปรียบเทียบ"} onClick={e => { e.stopPropagation(); onCompare(product.product_id); }}><span key={compared ? "compared" : "uncompared"} className="compare-icon" aria-hidden="true">⚖</span></button></div>
+    <div className="product-image-stage"><img className="product-image" src={product.image} alt={product.name} onError={useFallbackImage} /></div>
     <div className="product-info"><span className="tag">{product.category}</span><h3>{product.name}</h3><p className="brand">แบรนด์: {product.brand || "-"}</p><p className="price">ราคา: ฿{money(product.price)}</p></div>
   </article>;
 }
@@ -311,9 +306,9 @@ function ProductDialog({ product, products, onClose, onSelect }) {
   const fields = [["รหัสสินค้า", product.product_id], ["ชื่อสินค้า", product.name], ["แบรนด์", product.brand], ["ประเภท", product.category], ["ราคา", `฿${money(product.price)}`], ["Socket", product.socket], ["Cores", product.cores], ["Threads", product.threads], ["RAM Type", product.ram_type], ["Power Consumption", product.power_consumption], ["รายละเอียด", product.description]];
   const related = products.filter(item => item.category === product.category && item.product_id !== product.product_id).slice(0, 3);
   return <div className="modal" onClick={onClose}><div className="modal-box" onClick={e => e.stopPropagation()}><button className="close" onClick={onClose} aria-label="ปิด">×</button>
-    <img className="dialog-image" src={product.image} alt={product.name} onError={e => { e.currentTarget.src = "https://placehold.co/120x120?text=No+Image"; }} /><span className="tag">{product.category}</span><h2>{product.name}</h2><div className="price">฿{money(product.price)}</div>
+    <div className="product-image-stage dialog-image-stage"><img className="dialog-image" src={product.image} alt={product.name} onError={useFallbackImage} /></div><span className="tag">{product.category}</span><h2>{product.name}</h2><div className="price">฿{money(product.price)}</div>
     <table className="detail-table"><tbody>{fields.map(([key, value]) => <tr key={key}><td>{key}</td><td>{value || "-"}</td></tr>)}</tbody></table>
-    <h3>อุปกรณ์ที่เกี่ยวข้อง ({product.category})</h3><div className="related-grid">{related.map(item => <button className="related-item" key={item.product_id} onClick={() => onSelect(item)}><img src={item.image} alt="" /><b>{item.name}</b><span>฿{money(item.price)}</span></button>)}</div>
+    <h3>อุปกรณ์ที่เกี่ยวข้อง ({product.category})</h3><div className="related-grid">{related.map(item => <button className="related-item" key={item.product_id} onClick={() => onSelect(item)}><span className="related-image-stage"><img src={item.image} alt="" onError={useFallbackImage} /></span><b>{item.name}</b><span>฿{money(item.price)}</span></button>)}</div>
   </div></div>;
 }
 
@@ -359,10 +354,145 @@ function BuilderPage() {
     <form className="budget-box" onSubmit={recommend}><input type="number" min="1" value={budget} onChange={e => setBudget(e.target.value)} placeholder="ระบุงบประมาณ" /><button className="btn" disabled={loading}>{loading ? "กำลังจัดสเปก..." : "แนะนำสเปก"}</button></form>
     {error && <p role="alert" className="error-message">{error}</p>}{result && <div className="recommend-card"><h3>สเปกที่แนะนำ • รวม ฿{money(result.total)} / งบ ฿{money(result.budget)}</h3><p>งบประมาณคงเหลือ ฿{money(result.remaining)}</p>
       <p className={incompatible ? "compatibility-warning" : "compatibility-ok"}>{incompatible ? `⚠️ Socket ของ CPU (${cpu.socket}) และ Mainboard (${board.socket}) ไม่ตรงกัน` : "✅ อุปกรณ์เข้ากันได้ทั้งหมด (Compatible)"}</p>
-      <div className="recommend-items">{result.products.length ? result.products.map(item => <div className="recommend-item" key={item.product_id}><img src={item.image} alt={item.name} onError={e => { e.currentTarget.src = "https://placehold.co/60x60?text=No+Image"; }} /><span className="tag">{item.category}</span><b>{item.name}</b><span>฿{money(item.price)}</span></div>) : <p>ไม่สามารถจัดสเปกจากงบประมาณนี้ได้</p>}</div>
+      <div className="recommend-items">{result.products.length ? result.products.map(item => <div className="recommend-item" key={item.product_id}><span className="recommend-image-stage"><img src={normalizeImage(item.image || item.image_url)} alt={item.name} onError={useFallbackImage} /></span><span className="tag">{item.category}</span><b>{item.name}</b><span>฿{money(item.price)}</span></div>) : <p>ไม่สามารถจัดสเปกจากงบประมาณนี้ได้</p>}</div>
     </div>}</section>;
 }
 
-function AboutPage() {
-  return <section className="about section"><p className="eyebrow">ABOUT PC ADVISOR</p><h2>เกี่ยวกับระบบ</h2><p>เว็บแอปช่วยค้นหา เปรียบเทียบ และวางแผนสเปกคอมพิวเตอร์</p><div className="technology-list"><span>React + Vite</span><span>Node.js + Express API</span><span>Firebase Realtime Database</span><span>Firebase Authentication</span><span>Cloud Firestore</span></div><div className="api-list"><code>GET /api/recommend</code><code>POST /api/recommend</code></div></section>;
+function ReportPage({ user, onLogin }) {
+  const [status, setStatus] = useState("");
+  const [sending, setSending] = useState(false);
+  async function submitReport(event) {
+    event.preventDefault();
+    if (!user) return;
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
+    const category = String(form.get("category"));
+    const subjects = { problem: "แจ้งปัญหา", suggestion: "ข้อเสนอแนะ", product: "แจ้งข้อมูลสินค้า" };
+    setSending(true);
+    setStatus("");
+    try {
+      const reportRef = push(ref(database, "reports"));
+      await set(reportRef, {
+        subject: subjects[category] || "รายงานจากผู้ใช้",
+        category,
+        message: String(form.get("message")).trim(),
+        userId: user.uid,
+        userEmail: user.email || "",
+        status: "new",
+        createdAt: databaseServerTimestamp()
+      });
+      formElement.reset();
+      setStatus("ส่งรายงานเรียบร้อยแล้ว ผู้ดูแลระบบจะตรวจสอบให้ครับ");
+    } catch (error) {
+      console.error("ส่งรายงานไม่สำเร็จ:", error);
+      setStatus("ส่งรายงานไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
+    } finally {
+      setSending(false);
+    }
+  }
+  return <section className="section report-page">
+    <div className="section-head"><div><p className="eyebrow">PC ADVISOR</p><h2>แจ้งปัญหา / ส่งข้อเสนอแนะ</h2><p>แจ้งปัญหาการใช้งานหรือเสนอสิ่งที่อยากให้ปรับปรุง ข้อความจะส่งให้ผู้ดูแลระบบตรวจสอบ</p></div></div>
+    {!user ? <div className="admin-message"><p>กรุณาเข้าสู่ระบบก่อนส่งรายงาน เพื่อให้ผู้ดูแลติดต่อกลับได้</p><button className="btn" onClick={onLogin}>เข้าสู่ระบบเพื่อแจ้งปัญหา</button></div> : <form className="report-form" onSubmit={submitReport}>
+      <label>ประเภท<select name="category"><option value="problem">แจ้งปัญหา</option><option value="suggestion">เสนอแนะ</option><option value="product">ข้อมูลสินค้า</option></select></label>
+      <label>รายละเอียด<textarea name="message" required minLength="5" maxLength="2000" rows="6" placeholder="อธิบายสิ่งที่พบให้ทีมงานเข้าใจได้ง่ายขึ้น" /></label>
+      <button className="btn" disabled={sending}>{sending ? "กำลังส่ง..." : "ส่งรายงาน"}</button>
+      {status && <p role="status" className="report-status">{status}</p>}
+    </form>}
+  </section>;
+}
+
+function AdminPage({ user, isAdmin, adminCheckReady, adminCheckError, adminValue, products }) {
+  const [tab, setTab] = useState("products");
+  const [reports, setReports] = useState([]);
+  const [reportsReady, setReportsReady] = useState(false);
+  const [selectedKey, setSelectedKey] = useState("");
+  const [editor, setEditor] = useState("");
+  const [notice, setNotice] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    return onValue(ref(database, "reports"), snapshot => {
+      const entries = Object.entries(snapshot.val() || {}).map(([id, report]) => ({ id, ...report }));
+      entries.sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0));
+      setReports(entries);
+      setReportsReady(true);
+    }, error => {
+      console.error("โหลดรายงานไม่สำเร็จ:", error);
+      setNotice("อ่านรายงานไม่ได้ กรุณาตรวจสอบกฎ Firebase Realtime Database");
+    });
+  }, [isAdmin]);
+
+  useEffect(() => {
+    if (selectedKey === "__new__") return;
+    const selected = products.find(item => item.databaseKey === selectedKey);
+    setEditor(selected ? { ...selected.sourceData } : {});
+  }, [selectedKey, products]);
+
+  if (!user) return <section className="section"><div className="admin-message"><h2>หน้าสำหรับผู้ดูแลระบบ</h2><p>กรุณาเข้าสู่ระบบด้วยบัญชีที่ได้รับสิทธิ์ผู้ดูแล</p></div></section>;
+  if (!adminCheckReady) return <section className="section"><p>กำลังตรวจสอบสิทธิ์ผู้ดูแล...</p></section>;
+  if (!isAdmin) return <section className="section"><div className="admin-message"><h2>{adminCheckError ? "เว็บอ่านข้อมูลสิทธิ์จาก Firebase ไม่ได้" : "ยังไม่พบสิทธิ์แอดมินของบัญชีนี้"}</h2><p>{adminCheckError ? `ข้อผิดพลาด: ${adminCheckError} — ตรวจสอบ Rules ของ Realtime Database ว่าอนุญาตให้อ่าน admins/{user.uid} ได้` : `บัญชีที่ล็อกอินมี UID: ${user.uid}`}</p>{!adminCheckError && <p>ค่าที่เว็บอ่านได้จาก admins/{user.uid}: <strong>{adminValue === null ? "ไม่พบข้อมูล" : JSON.stringify(adminValue)}</strong></p>}<p>เว็บตรวจจากฐานข้อมูล Firebase: {database.app.options.databaseURL}</p></div></section>;
+
+  async function saveProduct(event) {
+    event.preventDefault();
+    setNotice("");
+    let value;
+    try {
+      value = { ...editor, price: Number(editor.price || 0) };
+      if (!value.name || !value.category) throw new Error("กรุณาระบุ name และ category");
+    } catch (error) {
+      setNotice(`ข้อมูลสินค้าไม่ถูกต้อง: ${error.message}`);
+      return;
+    }
+    setSaving(true);
+    try {
+      if (selectedKey === "__new__") await set(push(ref(database, "products")), value);
+      else await set(ref(database, `products/${selectedKey}`), value);
+      setSelectedKey("");
+      setEditor("");
+      setNotice("บันทึกข้อมูลสินค้าแล้ว");
+    } catch (error) {
+      console.error("บันทึกสินค้าไม่สำเร็จ:", error);
+      setNotice("บันทึกไม่สำเร็จ กรุณาตรวจสอบสิทธิ์และกฎ Firebase");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function deleteProduct() {
+    if (!selectedKey || selectedKey === "__new__" || !window.confirm("ต้องการลบสินค้านี้ใช่หรือไม่?")) return;
+    try {
+      await remove(ref(database, `products/${selectedKey}`));
+      setSelectedKey("");
+      setEditor("");
+      setNotice("ลบสินค้าแล้ว");
+    } catch (error) {
+      console.error("ลบสินค้าไม่สำเร็จ:", error);
+      setNotice("ลบสินค้าไม่สำเร็จ กรุณาตรวจสอบสิทธิ์ Firebase");
+    }
+  }
+
+  async function markReportReviewed(reportId) {
+    try {
+      await update(ref(database, `reports/${reportId}`), { status: "reviewed" });
+    } catch (error) {
+      console.error("อัปเดตสถานะรายงานไม่สำเร็จ:", error);
+      setNotice("เปลี่ยนสถานะรายงานไม่สำเร็จ");
+    }
+  }
+
+  return <section className="section admin-page">
+    <div className="section-head"><div><p className="eyebrow">PC ADVISOR</p><h2>จัดการระบบ</h2><p>ลงชื่อเข้าใช้เป็น {user.email || "ผู้ดูแล"}</p></div></div>
+    <div className="admin-tabs"><button className={tab === "products" ? "active" : ""} onClick={() => setTab("products")}>จัดการสินค้า ({products.length})</button><button className={tab === "reports" ? "active" : ""} onClick={() => setTab("reports")}>รายงานจากผู้ใช้ ({reports.filter(item => item.status !== "reviewed").length})</button></div>
+    {notice && <p role="status" className="admin-notice">{notice}</p>}
+    {tab === "products" ? <div className="admin-product-layout">
+      <div className="admin-product-list"><button className="btn" onClick={() => { setSelectedKey("__new__"); setEditor({ product_id: "", name: "", category: "", brand: "", price: 0, image: "", socket: "", cores: "", threads: "", ram_type: "", power_consumption: "", description: "" }); setNotice(""); }}>เพิ่มสินค้าใหม่</button>
+        {products.map(product => <button key={product.databaseKey} className={selectedKey === product.databaseKey ? "admin-product active" : "admin-product"} onClick={() => { setSelectedKey(product.databaseKey); setNotice(""); }}><b>{product.name}</b><span>{product.category} · ฿{money(product.price)}</span></button>)}
+      </div>
+      <form className="admin-editor" onSubmit={saveProduct}>
+        <h3>{selectedKey === "__new__" ? "เพิ่มสินค้า" : "แก้ไขข้อมูลสินค้า"}</h3>
+        {selectedKey ? <><p>กรอกหรือแก้ไขรายละเอียดสินค้าในช่องด้านล่าง ข้อมูลจะอัปเดตให้ผู้ใช้เห็นทันที</p><div className="product-edit-fields">{PRODUCT_FIELDS.map(([field, label]) => <label key={field}>{label}<input value={editor[field] ?? ""} type={field === "price" ? "number" : "text"} min={field === "price" ? "0" : undefined} onChange={event => setEditor(current => ({ ...current, [field]: event.target.value }))} /></label>)}<label className="product-description-field">รายละเอียด<textarea rows="4" value={editor.description ?? ""} onChange={event => setEditor(current => ({ ...current, description: event.target.value }))} /></label></div><div className="admin-actions"><button className="btn" disabled={saving}>{saving ? "กำลังบันทึก..." : "บันทึกสินค้า"}</button>{selectedKey !== "__new__" && <button type="button" className="secondary" onClick={deleteProduct}>ลบสินค้า</button>}</div></> : <p>เลือกสินค้าจากรายการ หรือกด “เพิ่มสินค้าใหม่”</p>}
+      </form>
+    </div> : <><p className="live-status" role="status">● {reportsReady ? "เชื่อมต่อแล้ว · รายงานอัปเดตอัตโนมัติแบบเรียลไทม์" : "กำลังเชื่อมต่อรายงาน..."}</p><div className="report-list">{reports.length ? reports.map(report => <article className="report-card" key={report.id}><div className="report-card-heading"><div><span className={report.status === "reviewed" ? "report-badge reviewed" : "report-badge"}>{report.status === "reviewed" ? "ตรวจสอบแล้ว" : "รอตรวจสอบ"}</span><h3>{report.subject || "ไม่มีหัวข้อ"}</h3></div><span>{report.createdAt ? new Date(Number(report.createdAt)).toLocaleString("th-TH") : "เวลาส่งไม่พร้อมใช้งาน"}</span></div><p>{report.message}</p><small>ประเภท: {report.category || "ทั่วไป"} · ผู้ส่ง: {report.userEmail || report.userId}</small>{report.status !== "reviewed" && <button className="secondary" onClick={() => markReportReviewed(report.id)}>ทำเครื่องหมายว่าตรวจแล้ว</button>}</article>) : <div className="empty-state">ยังไม่มีรายงานจากผู้ใช้</div>}</div></>}
+  </section>;
 }
