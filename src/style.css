@@ -78,6 +78,8 @@ footer{background:#0d1829;border-top:1px solid var(--border);color:var(--text-mu
 .report-badge{display:inline-block;margin-bottom:8px;padding:4px 9px;border-radius:999px;background:#3a2c18;color:#ffd38a;font-size:12px}
 .report-badge.reviewed{background:#12362f;color:#8be4c1}
 .report-card .secondary{justify-self:start}
+.report-card .secondary.danger{border-color:#8d3b4a;background:#3a2229;color:#ffb2bd}
+.report-card .secondary.danger:hover{border-color:#ff7187;background:#512631}
 .live-status{color:#8be4c1;font-size:13px}
 @media(max-width:760px){.admin-product-layout{grid-template-columns:1fr}.admin-product-list{max-height:280px}.report-form,.admin-message,.admin-editor,.report-card{padding:17px}.report-card-heading{flex-direction:column}}
 @media(max-width:520px){.product-edit-fields{grid-template-columns:1fr}.product-description-field{grid-column:auto}.member-area .account-email{display:none}.member-area .account-role{display:inline!important;font-size:.76rem}}

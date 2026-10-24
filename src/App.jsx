@@ -475,9 +475,22 @@ function AdminPage({ user, isAdmin, adminCheckReady, adminCheckError, adminValue
   async function markReportReviewed(reportId) {
     try {
       await update(ref(database, `reports/${reportId}`), { status: "reviewed" });
+      setNotice("รับทราบรายงานแล้ว");
     } catch (error) {
       console.error("อัปเดตสถานะรายงานไม่สำเร็จ:", error);
       setNotice("เปลี่ยนสถานะรายงานไม่สำเร็จ");
+    }
+  }
+
+  async function deleteReport(report) {
+    if (report.status !== "reviewed") return;
+    if (!window.confirm(`ลบรายงาน “${report.subject || "ไม่มีหัวข้อ"}” ที่รับทราบแล้วใช่หรือไม่?`)) return;
+    try {
+      await remove(ref(database, `reports/${report.id}`));
+      setNotice("ลบรายงานที่รับทราบแล้วเรียบร้อย");
+    } catch (error) {
+      console.error("ลบรายงานไม่สำเร็จ:", error);
+      setNotice("ลบรายงานไม่สำเร็จ กรุณาตรวจสอบสิทธิ์ Firebase");
     }
   }
 
@@ -493,6 +506,6 @@ function AdminPage({ user, isAdmin, adminCheckReady, adminCheckError, adminValue
         <h3>{selectedKey === "__new__" ? "เพิ่มสินค้า" : "แก้ไขข้อมูลสินค้า"}</h3>
         {selectedKey ? <><p>กรอกหรือแก้ไขรายละเอียดสินค้าในช่องด้านล่าง ข้อมูลจะอัปเดตให้ผู้ใช้เห็นทันที</p><div className="product-edit-fields">{PRODUCT_FIELDS.map(([field, label]) => <label key={field}>{label}<input value={editor[field] ?? ""} type={field === "price" ? "number" : "text"} min={field === "price" ? "0" : undefined} onChange={event => setEditor(current => ({ ...current, [field]: event.target.value }))} /></label>)}<label className="product-description-field">รายละเอียด<textarea rows="4" value={editor.description ?? ""} onChange={event => setEditor(current => ({ ...current, description: event.target.value }))} /></label></div><div className="admin-actions"><button className="btn" disabled={saving}>{saving ? "กำลังบันทึก..." : "บันทึกสินค้า"}</button>{selectedKey !== "__new__" && <button type="button" className="secondary" onClick={deleteProduct}>ลบสินค้า</button>}</div></> : <p>เลือกสินค้าจากรายการ หรือกด “เพิ่มสินค้าใหม่”</p>}
       </form>
-    </div> : <><p className="live-status" role="status">● {reportsReady ? "เชื่อมต่อแล้ว · รายงานอัปเดตอัตโนมัติแบบเรียลไทม์" : "กำลังเชื่อมต่อรายงาน..."}</p><div className="report-list">{reports.length ? reports.map(report => <article className="report-card" key={report.id}><div className="report-card-heading"><div><span className={report.status === "reviewed" ? "report-badge reviewed" : "report-badge"}>{report.status === "reviewed" ? "ตรวจสอบแล้ว" : "รอตรวจสอบ"}</span><h3>{report.subject || "ไม่มีหัวข้อ"}</h3></div><span>{report.createdAt ? new Date(Number(report.createdAt)).toLocaleString("th-TH") : "เวลาส่งไม่พร้อมใช้งาน"}</span></div><p>{report.message}</p><small>ประเภท: {report.category || "ทั่วไป"} · ผู้ส่ง: {report.userEmail || report.userId}</small>{report.status !== "reviewed" && <button className="secondary" onClick={() => markReportReviewed(report.id)}>ทำเครื่องหมายว่าตรวจแล้ว</button>}</article>) : <div className="empty-state">ยังไม่มีรายงานจากผู้ใช้</div>}</div></>}
+    </div> : <><p className="live-status" role="status">● {reportsReady ? "เชื่อมต่อแล้ว · รายงานอัปเดตอัตโนมัติแบบเรียลไทม์" : "กำลังเชื่อมต่อรายงาน..."}</p><div className="report-list">{reports.length ? reports.map(report => <article className="report-card" key={report.id}><div className="report-card-heading"><div><span className={report.status === "reviewed" ? "report-badge reviewed" : "report-badge"}>{report.status === "reviewed" ? "รับทราบแล้ว" : "รอตรวจสอบ"}</span><h3>{report.subject || "ไม่มีหัวข้อ"}</h3></div><span>{report.createdAt ? new Date(Number(report.createdAt)).toLocaleString("th-TH") : "เวลาส่งไม่พร้อมใช้งาน"}</span></div><p>{report.message}</p><small>ประเภท: {report.category || "ทั่วไป"} · ผู้ส่ง: {report.userEmail || report.userId}</small>{report.status !== "reviewed" ? <button className="secondary" onClick={() => markReportReviewed(report.id)}>รับทราบรายงาน</button> : <button className="secondary danger" onClick={() => deleteReport(report)}>ลบรายงาน</button>}</article>) : <div className="empty-state">ยังไม่มีรายงานจากผู้ใช้</div>}</div></>}
   </section>;
 }
